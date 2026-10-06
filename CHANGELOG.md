@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-06
+
 ### Added
 
 - Language settings (Settings › Traducción › Idiomas): the language you write in and the one to translate into, with regional variants (American/British English, Spain/neutral Latin American/Mexican/Argentinian Spanish, Brazilian/European Portuguese and more). Spanish → English stays the default.
@@ -70,7 +72,8 @@ First public release.
 - Configurable shortcuts, settings window, HUD notifications and an app icon.
 - Technical validation diagnostics for the focused field.
 
-[Unreleased]: https://github.com/albegosu/vibe-translator/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/albegosu/vibe-translator/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/albegosu/vibe-translator/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/albegosu/vibe-translator/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/albegosu/vibe-translator/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/albegosu/vibe-translator/releases/tag/v0.1.0
