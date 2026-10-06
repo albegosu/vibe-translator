@@ -8,6 +8,7 @@ final class HotKeyCenter {
         case translate = 1
         case restore = 2
         case translateSelection = 3
+        case improvePrompt = 4
     }
 
     var onAction: ((Action) -> Void)?

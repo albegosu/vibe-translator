@@ -10,7 +10,7 @@ struct OllamaModel: Identifiable, Hashable, Sendable {
 
 /// A model served by Ollama (local by default). Uses `/api/chat` with a JSON schema
 /// so the reply is always `{"lines": [...]}`.
-final class OllamaEngine: TranslationEngine, @unchecked Sendable {
+final class OllamaEngine: TranslationEngine, TextRewriter, @unchecked Sendable {
     let baseURL: URL
     let model: String
     let style: TranslationStyle
@@ -45,6 +45,28 @@ final class OllamaEngine: TranslationEngine, @unchecked Sendable {
             // Older models reject the `think` switch; they don't think anyway.
             body["think"] = nil
             return try LLMPrompt.parseLines(try await chat(body))
+        }
+    }
+
+    func rewrite(_ text: String, instructions: String) async throws -> String {
+        guard !model.isEmpty else { throw TranslationEngineError.unavailable("Elige un modelo de Ollama en Ajustes.") }
+        var body: [String: Any] = [
+            "model": model,
+            "stream": false,
+            "keep_alive": "30m",
+            "think": false,
+            "format": LLMPrompt.promptSchema,
+            "options": ["temperature": 0.2],
+            "messages": [
+                ["role": "system", "content": instructions],
+                ["role": "user", "content": text],
+            ],
+        ]
+        do {
+            return LLMPrompt.parsePrompt(try await chat(body))
+        } catch let OllamaError.server(message) where message.localizedCaseInsensitiveContains("think") {
+            body["think"] = nil
+            return LLMPrompt.parsePrompt(try await chat(body))
         }
     }
 

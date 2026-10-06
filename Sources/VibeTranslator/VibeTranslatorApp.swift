@@ -11,12 +11,19 @@ struct VibeTranslatorApp: App {
         } label: {
             MenuBarIcon(model: AppModel.shared)
         }
+        Settings {
+            SettingsView(model: AppModel.shared)
+        }
     }
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         MainActor.assumeIsolated {
+            if SettingsSnapshot.renderIfRequested() {
+                NSApp.terminate(nil)
+                return
+            }
             AppModel.shared.start()
         }
     }
@@ -32,6 +39,7 @@ private struct MenuBarIcon: View {
 
 private struct MenuContent: View {
     let model: AppModel
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         Button("Traducir borrador al inglés" + shortcutSuffix(model.settings.translateShortcut)) {
@@ -46,6 +54,11 @@ private struct MenuContent: View {
 
         Button("Traducir selección" + shortcutSuffix(model.settings.selectionShortcut)) {
             Task { await model.translateSelection() }
+        }
+        .disabled(model.isBusy)
+
+        Button("Mejorar prompt" + shortcutSuffix(model.settings.promptShortcut)) {
+            Task { await model.improvePrompt() }
         }
         .disabled(model.isBusy)
 
@@ -84,7 +97,11 @@ private struct MenuContent: View {
         }
         .disabled(model.isBusy)
 
-        Button("Ajustes…") { model.showSettings() }
+        Button("Ajustes…") {
+            // A menu bar app isn't active; without this the window opens behind other apps.
+            NSApp.activate()
+            openSettings()
+        }
             .keyboardShortcut(",")
         Button("Salir de VibeTranslator") { NSApp.terminate(nil) }
             .keyboardShortcut("q")

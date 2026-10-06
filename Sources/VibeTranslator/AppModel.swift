@@ -21,6 +21,8 @@ enum AppError: LocalizedError {
     case nothingChanged
     case nothingToRestore
     case restoreMismatch
+    case selectPromptInTerminal
+    case promptTooLong
 
     var errorDescription: String? {
         switch self {
@@ -38,6 +40,10 @@ enum AppError: LocalizedError {
             "No hay ninguna traducción que deshacer."
         case .restoreMismatch:
             "Has editado el borrador después de traducirlo, así que no se sobrescribe. Usa «Copiar original» en el menú."
+        case .selectPromptInTerminal:
+            "En la terminal, selecciona primero el texto del prompt."
+        case .promptTooLong:
+            "El campo es demasiado largo para ser un prompt. Selecciona la parte que quieres mejorar."
         }
     }
 }
@@ -93,6 +99,7 @@ final class AppModel {
                 case .translate: await self.translateDraft()
                 case .restore: await self.restoreOriginal()
                 case .translateSelection: await self.translateSelection()
+                case .improvePrompt: await self.improvePrompt()
                 }
             }
         }
@@ -220,6 +227,7 @@ final class AppModel {
 
             let direction = LanguageDirection.detect(selection.text)
             selectionPanel.state.onClose = { [weak self] in self?.selectionPanel.close() }
+            selectionPanel.onDismiss = { [app = target.app] in app.activate() }
             selectionPanel.show(directionLabel: "\(Self.languageLabel(direction.source)) → \(Self.languageLabel(direction.target))")
 
             let translator = makeTranslator(from: direction.source, to: direction.target)
@@ -250,9 +258,140 @@ final class AppModel {
             guard let self else { return }
             selectionPanel.close()
             Task {
+                try? await Task.sleep(for: .milliseconds(200))
                 do {
                     try await target.replaceSelection(selection, with: translation.text)
                     self.hud.show("Selección reemplazada por la traducción.", style: .success)
+                } catch {
+                    self.fail(error)
+                }
+            }
+        }
+        selectionPanel.refit()
+    }
+
+    // MARK: Improve prompt
+
+    /// Where the prompt came from, so "Reemplazar" writes back to exactly that place.
+    private enum PromptSource {
+        case selection(SelectionSnapshot)
+        case field(DraftSnapshot)
+
+        var text: String {
+            switch self {
+            case let .selection(selection): selection.text
+            case let .field(field): field.text
+            }
+        }
+    }
+
+    /// Terminals: ⌘A would grab the whole scrollback and the input line can't be replaced.
+    private static let terminalBundleIDs: Set<String> = [
+        "com.apple.Terminal", "com.googlecode.iterm2", "dev.warp.Warp-Stable", "com.mitchellh.ghostty",
+        "net.kovidgoyal.kitty", "io.alacritty", "com.github.wez.wezterm",
+    ]
+
+    func improvePrompt() async {
+        guard !isBusy else {
+            hud.show("Ya hay una traducción en curso.", style: .info)
+            return
+        }
+        isBusy = true
+        defer { isBusy = false }
+
+        do {
+            let target = try prepareAccessor(restrictToAllowedApps: false)
+            await KeyboardSimulator.waitForModifierRelease()
+            let isTerminal = Self.terminalBundleIDs.contains(target.app.bundleIdentifier ?? "")
+            let source = try await capturePrompt(in: target, isTerminal: isTerminal)
+
+            let options = PromptOptions(profile: settings.promptProfile, toEnglish: settings.promptToEnglish, glossary: settings.style.glossary)
+            selectionPanel.state.onClose = { [weak self] in self?.selectionPanel.close() }
+            selectionPanel.onDismiss = { [app = target.app] in app.activate() }
+            selectionPanel.show(directionLabel: options.profile.title + (options.toEnglish ? " · en inglés" : ""), width: 560)
+
+            let improver = makePromptImprover(options)
+            let text = source.text
+            let result = try await withTimeout(.seconds(60)) { try await improver.improve(text) }
+            showPromptResult(result, source: source, in: target, canReplace: !isTerminal)
+        } catch {
+            if selectionPanel.isVisible {
+                selectionPanel.state.phase = .failed(error.localizedDescription)
+                selectionPanel.refit()
+            } else {
+                fail(error)
+            }
+        }
+    }
+
+    /// The selection if there is one, otherwise the whole focused field.
+    private func capturePrompt(in target: DraftAccessor, isTerminal: Bool) async throws -> PromptSource {
+        let element = await target.focusedElement()
+        if let range = element?.selectedRange, element?.isTextInput == true {
+            if range.length > 0 { return .selection(try await target.captureSelection()) }
+        } else if let selection = try? await target.captureSelection() {
+            return .selection(selection)
+        }
+        guard !isTerminal else { throw AppError.selectPromptInTerminal }
+        let field = try await target.capture()
+        guard field.text.count <= 8_000 else {
+            await target.deselectIfStillFrontmost(after: field)
+            throw AppError.promptTooLong
+        }
+        return .field(field)
+    }
+
+    private func makePromptImprover(_ options: PromptOptions) -> PromptImprover {
+        var rewriters: [any TextRewriter] = []
+        switch settings.engine {
+        case .appleIntelligence:
+            rewriters.append(AppleIntelligenceEngine(style: settings.style))
+        case .ollama:
+            rewriters.append(OllamaEngine(baseURL: settings.ollamaBaseURL, model: settings.ollamaModel, style: settings.style))
+        case .appleTranslation:
+            break
+        }
+        let fallback = DraftTranslator(engines: [appleTranslation], source: Self.source, target: Self.target, engineTimeout: .seconds(20))
+        return PromptImprover(rewriters: rewriters, fallback: fallback, options: options, timeout: .seconds(45))
+    }
+
+    private func showPromptResult(_ result: PromptImprovement, source: PromptSource, in target: DraftAccessor, canReplace: Bool) {
+        let state = selectionPanel.state
+        state.phase = .done(result.text)
+        state.canReplace = canReplace && {
+            if case let .selection(selection) = source { return selection.isEditable }
+            return true
+        }()
+        if result.translatedOnly {
+            state.note = "Solo traducido con \(result.engineName): \(result.failures.first?.message ?? "no hay motor LLM").".replacingOccurrences(of: "..", with: ".")
+        } else {
+            state.note = result.failures.first.map { "Con \(result.engineName): \($0.engineName) falló." }
+        }
+        state.onCopy = { [weak self] in
+            Clipboard.write(result.text)
+            self?.selectionPanel.close()
+            self?.hud.show("Prompt copiado.", style: .success)
+        }
+        state.onReplace = { [weak self] in
+            guard let self else { return }
+            selectionPanel.close()
+            Task {
+                try? await Task.sleep(for: .milliseconds(200))
+                do {
+                    switch source {
+                    case let .selection(selection):
+                        try await target.replaceSelection(selection, with: result.text)
+                    case let .field(field):
+                        try await target.replace(field, with: result.text)
+                        self.lastTranslation = LastTranslation(
+                            identity: field.identity,
+                            appName: target.app.localizedName ?? "",
+                            original: field.text,
+                            translated: result.text,
+                            method: field.method
+                        )
+                    }
+                    self.hud.show("Prompt reemplazado.", style: .success)
                 } catch {
                     self.fail(error)
                 }
@@ -334,10 +473,6 @@ final class AppModel {
         registerHotKeys()
     }
 
-    func showSettings() {
-        windows.show(id: "settings", title: "Ajustes de VibeTranslator") { SettingsView(model: self) }
-    }
-
     func showLanguageSetup() {
         windows.show(id: "languages", title: "Idiomas de traducción") { LanguageSetupView(model: self) }
     }
@@ -352,6 +487,9 @@ final class AppModel {
         }
         if !hotKeys.register(settings.selectionShortcut, for: .translateSelection) {
             failed.append("traducir selección (\(settings.selectionShortcut?.displayString ?? ""))")
+        }
+        if !hotKeys.register(settings.promptShortcut, for: .improvePrompt) {
+            failed.append("mejorar prompt (\(settings.promptShortcut?.displayString ?? ""))")
         }
         hotKeyProblem = failed.isEmpty ? nil : "No se pudo registrar el atajo de \(failed.joined(separator: " y ")); probablemente lo usa otra app."
     }
