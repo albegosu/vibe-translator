@@ -28,6 +28,8 @@ scripts/build-app.sh
 open build/VibeTranslator.app
 ```
 
+El icono se genera con `swift scripts/make-icon.swift`, que escribe `Resources/AppIcon.icns`.
+
 Tests del núcleo (markup y pipeline de traducción):
 
 ```bash

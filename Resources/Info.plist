@@ -8,6 +8,8 @@
 	<string>VibeTranslator</string>
 	<key>CFBundleExecutable</key>
 	<string>VibeTranslator</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
 	<string>io.github.albegosu.VibeTranslator</string>
 	<key>CFBundleInfoDictionaryVersion</key>
