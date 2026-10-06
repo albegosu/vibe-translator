@@ -106,3 +106,40 @@ struct LLMPromptTests {
         #expect(TranslationStyle.glossary(from: "PR, deploy\nmerge ,, ") == ["PR", "deploy", "merge"])
     }
 }
+
+/// Drops the placeholder in the full line (forcing the fragment pass) and, like a real
+/// LLM told about tokens, invents one after a lone greeting.
+struct TokenInventingEngine: TranslationEngine {
+    let displayName = "Inventive LLM"
+    func translate(_ texts: [String], from: Locale.Language, to: Locale.Language) async throws -> [String] {
+        texts.map { text in
+            switch text {
+            case "Hola {0}, estoy aquí": "Hey, I'm here"
+            case "Hola": "Hey {0}"
+            case ", estoy aquí": ", I'm here"
+            default: text
+            }
+        }
+    }
+}
+
+struct PlaceholderLeakTests {
+    @Test func fragmentsNeverKeepInventedTokens() async throws {
+        let result = try await DraftTranslator(engine: TokenInventingEngine()).translate("Hola <@123456789012345678>, estoy aquí")
+        #expect(result.text == "Hey <@123456789012345678>, I'm here")
+        #expect(!result.text.contains("{0}"))
+    }
+
+    @Test func removesOnlyInventedTokens() {
+        let pattern = PlaceholderStyle.default.pattern
+        #expect(DraftTranslator.removingInventedTokens("Hey {0}, use {1} here", source: "Hola, usa {1} aquí", pattern: pattern) == "Hey, use {1} here")
+        #expect(DraftTranslator.removingInventedTokens("Hey {0}", source: "Hola", pattern: pattern) == "Hey")
+        #expect(DraftTranslator.removingInventedTokens("Format {0}-{1}", source: "Formato {0}-{1}", pattern: pattern) == "Format {0}-{1}")
+    }
+
+    @Test func tokensTheAuthorWroteSurvive() async throws {
+        // Literal "{0}" typed by the user goes through the fragment pass untouched.
+        let result = try await DraftTranslator(engine: RecordingEngine()).translate("usa {0} con <@123456789012345678> ya")
+        #expect(result.text == "usa {0} con <@123456789012345678> ya")
+    }
+}

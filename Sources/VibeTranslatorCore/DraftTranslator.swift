@@ -99,7 +99,11 @@ public struct DraftTranslator: Sendable {
         if !fallbackLines.isEmpty {
             let fragments = fallbackLines.flatMap { document.lines[$0].translatableFragments }
             let outputs = try await chain.translate(fragments.map(\.core))
-            var translated = outputs.map(singleLine).makeIterator()
+            // Fragments carry no placeholders, but a model told about them may invent one
+            // ("Hola" → "Hey {0}"): drop any token the fragment didn't already contain.
+            var translated = zip(fragments, outputs)
+                .map { fragment, output in Self.removingInventedTokens(singleLine(output), source: fragment.core, pattern: pattern) }
+                .makeIterator()
             for index in fallbackLines {
                 results[index] = document.lines[index].assembleFragments { translated.next() ?? $0 }
             }
@@ -108,6 +112,10 @@ public struct DraftTranslator: Sendable {
         let text = document.assemble(results.indices.map { index in
             DraftText.mirroringLeadingCase(of: document.lines[index].content, in: results[index] ?? "")
         })
+        // Last line of defence: our internal tokens must never reach the user's text.
+        guard Self.tokenCount(in: text, pattern: pattern) <= Self.tokenCount(in: draft, pattern: pattern) else {
+            throw TranslationEngineError.leakedPlaceholders
+        }
         return DraftTranslation(
             text: text,
             translatedLines: document.lines.count,
@@ -115,6 +123,38 @@ public struct DraftTranslator: Sendable {
             engineName: chain.lastEngine,
             failures: chain.failures
         )
+    }
+
+    static func tokenCount(in text: String, pattern: NSRegularExpression) -> Int {
+        pattern.numberOfMatches(in: text, range: NSRange(location: 0, length: (text as NSString).length))
+    }
+
+    /// Removes placeholder tokens from `output` beyond those the author wrote in `source`.
+    static func removingInventedTokens(_ output: String, source: String, pattern: NSRegularExpression) -> String {
+        let sourceNS = source as NSString
+        var allowed: [String: Int] = [:]
+        for match in pattern.matches(in: source, range: NSRange(location: 0, length: sourceNS.length)) {
+            allowed[sourceNS.substring(with: match.range), default: 0] += 1
+        }
+        let outputNS = output as NSString
+        let cleaned = NSMutableString(string: output)
+        var invented: [NSRange] = []
+        for match in pattern.matches(in: output, range: NSRange(location: 0, length: outputNS.length)) {
+            let token = outputNS.substring(with: match.range)
+            if let remaining = allowed[token], remaining > 0 {
+                allowed[token] = remaining - 1
+            } else {
+                invented.append(match.range)
+            }
+        }
+        guard !invented.isEmpty else { return output }
+        for range in invented.reversed() {
+            cleaned.replaceCharacters(in: range, with: "")
+        }
+        return (cleaned as String)
+            .replacingOccurrences(of: #"[ \t]{2,}"#, with: " ", options: .regularExpression)
+            .replacingOccurrences(of: #" ([,.;:!?])"#, with: "$1", options: .regularExpression)
+            .trimmingCharacters(in: .whitespaces)
     }
 
     /// Each request is a single line; an engine must not introduce line breaks.

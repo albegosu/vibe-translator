@@ -16,6 +16,7 @@ public enum TranslationEngineError: LocalizedError, Equatable {
     case invalidResponse
     case implausibleOutput
     case timedOut
+    case leakedPlaceholders
 
     public var errorDescription: String? {
         switch self {
@@ -33,6 +34,8 @@ public enum TranslationEngineError: LocalizedError, Equatable {
             "El motor devolvió algo que no parece una traducción."
         case .timedOut:
             "La traducción ha tardado demasiado."
+        case .leakedPlaceholders:
+            "La traducción traía marcadores internos y no se ha aplicado. Vuelve a intentarlo."
         }
     }
 }
