@@ -1,4 +1,5 @@
-// Renders the app icon into Resources/AppIcon.icns (plus a 1024 px preview).
+// Renders the app icon into Resources/AppIcon.icns, the README logo (docs/assets/icon.png)
+// and a 1024 px preview in build/.
 //
 //   swift scripts/make-icon.swift
 //
@@ -10,6 +11,7 @@ let root = URL(fileURLWithPath: CommandLine.arguments.count > 1 ? CommandLine.ar
 let iconset = FileManager.default.temporaryDirectory.appendingPathComponent("AppIcon.iconset")
 let output = root.appendingPathComponent("Resources/AppIcon.icns")
 let preview = root.appendingPathComponent("build/AppIcon-preview.png")
+let readmeLogo = root.appendingPathComponent("docs/assets/icon.png")
 
 func color(_ hex: UInt32, _ alpha: CGFloat = 1) -> NSColor {
     NSColor(
@@ -149,6 +151,8 @@ for (points, scale) in [(16, 1), (16, 2), (32, 1), (32, 2), (128, 1), (128, 2), 
 }
 try fm.createDirectory(at: preview.deletingLastPathComponent(), withIntermediateDirectories: true)
 try render(pixels: 1024).representation(using: .png, properties: [:])!.write(to: preview)
+try fm.createDirectory(at: readmeLogo.deletingLastPathComponent(), withIntermediateDirectories: true)
+try render(pixels: 512).representation(using: .png, properties: [:])!.write(to: readmeLogo)
 
 let iconutil = Process()
 iconutil.executableURL = URL(fileURLWithPath: "/usr/bin/iconutil")
@@ -156,4 +160,4 @@ iconutil.arguments = ["-c", "icns", iconset.path, "-o", output.path]
 try iconutil.run()
 iconutil.waitUntilExit()
 guard iconutil.terminationStatus == 0 else { fatalError("iconutil failed") }
-print("Wrote \(output.path) and \(preview.path)")
+print("Wrote \(output.path), \(readmeLogo.path) and \(preview.path)")
