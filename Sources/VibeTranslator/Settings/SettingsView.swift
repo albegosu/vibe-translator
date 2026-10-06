@@ -18,6 +18,9 @@ struct SettingsView: View {
                 LabeledContent("Traducir selección") {
                     ShortcutRecorder(shortcut: $settings.selectionShortcut, onRecordingChange: recordingChanged)
                 }
+                LabeledContent("Mejorar prompt") {
+                    ShortcutRecorder(shortcut: $settings.promptShortcut, onRecordingChange: recordingChanged)
+                }
                 if let problem = model.hotKeyProblem {
                     Text(problem).foregroundStyle(.red).font(.callout)
                 }
@@ -57,6 +60,19 @@ struct SettingsView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+            }
+
+            Section {
+                Picker("Perfil", selection: $settings.promptProfile) {
+                    ForEach(PromptProfile.allCases) { Text($0.title).tag($0) }
+                }
+                Toggle("Escribir el prompt en inglés", isOn: $settings.promptToEnglish)
+            } header: {
+                Text("Mejorar prompt")
+            } footer: {
+                Text("Reescribe la selección (o el campo entero) como un prompt claro, sin tocar código, rutas, @menciones, URLs ni variables. Necesita un motor LLM; con Apple Translation solo se traduce. En la terminal, selecciona antes el texto.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             if settings.engine == .ollama {

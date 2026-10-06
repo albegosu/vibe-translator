@@ -33,6 +33,7 @@ It can also translate any text you select, in any app (English → Spanish or Sp
 
 - **Translate your draft**: one global shortcut translates the whole Discord draft in place, ready to send.
 - **Translate a selection**: select text anywhere (someone's message, a web page, a PDF) and get the translation in a floating panel next to the cursor, with **Copy** and, if the selection is editable, **Replace**. The language is detected automatically.
+- **Improve a prompt** *(experimental)*: turn a rough request, in Spanish or English, into a clear, structured prompt in English for an AI assistant or coding agent. Code blocks, file paths, `@mentions`, URLs, `{{variables}}` and XML tags are kept intact. Preview it in the floating panel, then **Replace** or **Copy**.
 - **Natural, not literal**: by default an LLM translates with a tone profile ("relaxed technical" out of the box), a glossary of terms to keep, and your own instructions. Idioms and slang are rendered by meaning.
 - **Markup is preserved**: mentions (`<@id>`, `@user`, `@everyone`, `#channel`), emoji (Unicode, `:shortcode:`, `<:custom:id>`), links, inline code and code blocks, formatting (`**`, `||`, `~~`…), line prefixes (`>`, `-`, `#`, `-#`), line breaks and indentation.
 - **Safe replacement**: the draft is only replaced if the same app, window or channel, field and text are still there. If anything changed while translating, nothing is touched.
@@ -92,8 +93,11 @@ CODESIGN_IDENTITY="VibeTranslator Dev" scripts/build-app.sh
 | `⌃⌥T` | Translate the current draft (Spanish → English) in place |
 | `⌃⌥Z` | Restore the original draft |
 | `⌃⌥Y` | Translate the selected text in a floating panel (direction detected automatically) |
+| `⌃⌥P` | Improve the selected prompt, or the whole field, and preview it before replacing (experimental) |
 
-All shortcuts can be changed or removed in Settings. The draft shortcut only acts in Discord by default ("Traducir el borrador solo en Discord"); translating a selection works in any app.
+All shortcuts can be changed or removed in Settings. The draft shortcut only acts in Discord by default ("Traducir el borrador solo en Discord"); translating a selection and improving a prompt work in any app. In terminals (Claude Code and friends) select the prompt text first.
+
+**Improve prompt** has two profiles in Settings: *Tarea para agente de código* (Goal / Context / Requirements / Done when) and *Pregunta concisa*. It never adds requirements you didn't write, and it lists open questions instead of guessing. It needs an LLM engine (Ollama or Apple Intelligence); with Apple Translation it only translates.
 
 ## Translation engines
 

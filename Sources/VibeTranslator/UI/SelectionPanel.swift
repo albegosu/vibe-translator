@@ -15,6 +15,7 @@ final class SelectionPanelState {
     var phase = Phase.translating
     var note: String?
     var canReplace = false
+    var width: CGFloat = 420
     var onCopy: () -> Void = {}
     var onReplace: () -> Void = {}
     var onClose: () -> Void = {}
@@ -31,8 +32,9 @@ final class SelectionPanel {
 
     var isVisible: Bool { panel?.isVisible == true }
 
-    func show(directionLabel: String) {
+    func show(directionLabel: String, width: CGFloat = 420) {
         state.directionLabel = directionLabel
+        state.width = width
         state.phase = .translating
         state.note = nil
         state.canReplace = false
@@ -147,7 +149,7 @@ private struct SelectionPanelView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                .frame(maxHeight: 300)
+                .frame(maxHeight: state.width > 420 ? 380 : 300)
                 .fixedSize(horizontal: false, vertical: true)
                 if let note = state.note {
                     Text(note).font(.caption).foregroundStyle(.secondary)
@@ -167,7 +169,7 @@ private struct SelectionPanelView: View {
             }
         }
         .padding(14)
-        .frame(width: 420)
+        .frame(width: state.width)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.separator, lineWidth: 0.5))
         .shadow(color: .black.opacity(0.2), radius: 12, y: 5)

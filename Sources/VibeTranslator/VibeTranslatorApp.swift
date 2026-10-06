@@ -49,6 +49,11 @@ private struct MenuContent: View {
         }
         .disabled(model.isBusy)
 
+        Button("Mejorar prompt" + shortcutSuffix(model.settings.promptShortcut)) {
+            Task { await model.improvePrompt() }
+        }
+        .disabled(model.isBusy)
+
         Button("Copiar original al portapapeles") {
             model.copyOriginal()
         }

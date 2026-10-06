@@ -16,6 +16,7 @@ struct Shortcut: Codable, Equatable, Sendable {
     static let defaultTranslate = Shortcut(keyCode: UInt16(kVK_ANSI_T), modifiers: [.control, .option])
     static let defaultRestore = Shortcut(keyCode: UInt16(kVK_ANSI_Z), modifiers: [.control, .option])
     static let defaultSelection = Shortcut(keyCode: UInt16(kVK_ANSI_Y), modifiers: [.control, .option])
+    static let defaultPrompt = Shortcut(keyCode: UInt16(kVK_ANSI_P), modifiers: [.control, .option])
 
     var modifierFlags: NSEvent.ModifierFlags { NSEvent.ModifierFlags(rawValue: modifiers) }
 

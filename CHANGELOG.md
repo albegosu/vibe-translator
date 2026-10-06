@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Improve prompt (experimental, `⌃⌥P`): rewrites the selection or the focused field into a structured prompt (optionally in English) for AI assistants and coding agents, keeping code blocks, file paths, @mentions, URLs, template variables and XML tags intact, with a preview before replacing.
+
 ## [0.1.0] - 2026-10-06
 
 First public release.

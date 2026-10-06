@@ -45,6 +45,18 @@ final class AppSettings {
         didSet { save(selectionShortcut, Keys.selectionShortcut); onShortcutsChanged?() }
     }
 
+    var promptShortcut: Shortcut? {
+        didSet { save(promptShortcut, Keys.promptShortcut); onShortcutsChanged?() }
+    }
+
+    var promptProfile: PromptProfile {
+        didSet { defaults.set(promptProfile.rawValue, forKey: Keys.promptProfile) }
+    }
+
+    var promptToEnglish: Bool {
+        didSet { defaults.set(promptToEnglish, forKey: Keys.promptToEnglish) }
+    }
+
     var accessMode: AccessMode {
         didSet { defaults.set(accessMode.rawValue, forKey: Keys.accessMode) }
     }
@@ -93,6 +105,9 @@ final class AppSettings {
         translateShortcut = Self.load(Keys.translateShortcut, defaults) ?? .defaultTranslate
         restoreShortcut = Self.load(Keys.restoreShortcut, defaults) ?? .defaultRestore
         selectionShortcut = Self.load(Keys.selectionShortcut, defaults) ?? .defaultSelection
+        promptShortcut = Self.load(Keys.promptShortcut, defaults) ?? .defaultPrompt
+        promptProfile = defaults.string(forKey: Keys.promptProfile).flatMap(PromptProfile.init(rawValue:)) ?? .agentTask
+        promptToEnglish = defaults.object(forKey: Keys.promptToEnglish) as? Bool ?? true
         accessMode = defaults.string(forKey: Keys.accessMode).flatMap(AccessMode.init(rawValue:)) ?? .automatic
         engine = defaults.string(forKey: Keys.engine).flatMap(EngineKind.init(rawValue:)) ?? .appleIntelligence
         onlyInDiscord = defaults.object(forKey: Keys.onlyInDiscord) as? Bool ?? true
@@ -126,6 +141,9 @@ final class AppSettings {
         static let translateShortcut = "translateShortcut"
         static let restoreShortcut = "restoreShortcut"
         static let selectionShortcut = "selectionShortcut"
+        static let promptShortcut = "promptShortcut"
+        static let promptProfile = "promptProfile"
+        static let promptToEnglish = "promptToEnglish"
         static let accessMode = "accessMode"
         static let engine = "engine"
         static let onlyInDiscord = "onlyInDiscord"
