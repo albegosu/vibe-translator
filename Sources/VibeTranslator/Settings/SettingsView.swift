@@ -1,14 +1,35 @@
 import SwiftUI
 import VibeTranslatorCore
 
+/// Standard macOS settings: toolbar tabs, each a grouped form with a fixed size that
+/// scrolls if its content grows (it used to be one form taller than a laptop screen).
 struct SettingsView: View {
+    let model: AppModel
+
+    var body: some View {
+        TabView {
+            GeneralSettingsTab(model: model)
+                .tabItem { Label("General", systemImage: "gearshape") }
+            TranslationSettingsTab(model: model)
+                .tabItem { Label("Traducción", systemImage: "character.bubble") }
+            PromptSettingsTab(model: model)
+                .tabItem { Label("Prompts", systemImage: "wand.and.stars") }
+        }
+        .onAppear { model.refreshTrust() }
+        .task { await model.refreshEngineStatus() }
+    }
+
+    static let width: CGFloat = 540
+}
+
+struct GeneralSettingsTab: View {
     let model: AppModel
 
     var body: some View {
         @Bindable var settings = model.settings
 
         Form {
-            Section("Atajos globales") {
+            Section("Atajos") {
                 LabeledContent("Traducir borrador") {
                     ShortcutRecorder(shortcut: $settings.translateShortcut, onRecordingChange: recordingChanged)
                 }
@@ -22,84 +43,9 @@ struct SettingsView: View {
                     ShortcutRecorder(shortcut: $settings.promptShortcut, onRecordingChange: recordingChanged)
                 }
                 if let problem = model.hotKeyProblem {
-                    Text(problem).foregroundStyle(.red).font(.callout)
-                }
-            }
-
-            Section {
-                LabeledContent("Idiomas", value: "Español → Inglés")
-                Picker("Motor", selection: $settings.engine) {
-                    ForEach(EngineKind.allCases) { Text($0.title).tag($0) }
-                }
-                engineStatus(settings.engine)
-            } header: {
-                Text("Traducción")
-            } footer: {
-                Text("Si el motor elegido no está disponible, falla o tarda más de 20 s, se traduce con Apple Translation y el aviso lo indica.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            if settings.engine.usesStyle {
-                Section {
-                    Picker("Tono", selection: $settings.tone) {
-                        ForEach(TranslationTone.allCases) { Text($0.title).tag($0) }
-                    }
-                    TextField("No traducir", text: $settings.glossaryText, prompt: Text("PR, deploy, staging…"))
-                    LabeledContent("Instrucciones extra") {
-                        TextEditor(text: $settings.extraInstructions)
-                            .font(.callout)
-                            .frame(height: 64)
-                            .scrollContentBackground(.hidden)
-                            .background(.background.secondary, in: RoundedRectangle(cornerRadius: 6))
-                    }
-                } header: {
-                    Text("Estilo")
-                } footer: {
-                    Text("Ejemplo de instrucciones: «Usa ortografía británica», «Llama \"daily\" a la reunión diaria».")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            Section {
-                Picker("Perfil", selection: $settings.promptProfile) {
-                    ForEach(PromptProfile.allCases) { Text($0.title).tag($0) }
-                }
-                Toggle("Escribir el prompt en inglés", isOn: $settings.promptToEnglish)
-            } header: {
-                Text("Mejorar prompt")
-            } footer: {
-                Text("Reescribe la selección (o el campo entero) como un prompt claro, sin tocar código, rutas, @menciones, URLs ni variables. Necesita un motor LLM; con Apple Translation solo se traduce. En la terminal, selecciona antes el texto.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            if settings.engine == .ollama {
-                Section("Ollama") {
-                    TextField("Servidor", text: $settings.ollamaURL, prompt: Text(AppSettings.defaultOllamaURL))
-                    HStack {
-                        Picker("Modelo", selection: $settings.ollamaModel) {
-                            if !model.ollamaModels.contains(where: { $0.name == settings.ollamaModel }) {
-                                Text(settings.ollamaModel.isEmpty ? "Ninguno" : settings.ollamaModel).tag(settings.ollamaModel)
-                            }
-                            ForEach(model.ollamaModels) { item in
-                                Text(item.isCloud ? "\(item.name)  (nube)" : item.name).tag(item.name)
-                            }
-                        }
-                        Button("Actualizar") { Task { await model.refreshEngineStatus() } }
-                    }
-                    if settings.ollamaModel.hasSuffix("cloud") {
-                        Label("Este modelo se ejecuta en la nube de Ollama: el borrador sale del Mac.", systemImage: "icloud")
-                            .font(.callout)
-                            .foregroundStyle(.orange)
-                    }
-                    if let status = model.ollamaStatus {
-                        Text(status).font(.callout).foregroundStyle(.secondary)
-                    }
-                    Text("Para un modelo local: `ollama pull <modelo>` en Terminal y pulsa Actualizar.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Label(problem, systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                        .font(.callout)
                 }
             }
 
@@ -111,28 +57,111 @@ struct SettingsView: View {
             } header: {
                 Text("Acceso al borrador")
             } footer: {
-                Text("Automático usa el portapapeles en apps Electron como Discord (el editor procesa el pegado igual que si pegaras tú) y Accesibilidad en campos nativos. El portapapeles siempre se restaura. «Traducir selección» funciona en cualquier app.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Footnote("Automático usa el portapapeles en apps como Discord y Accesibilidad en campos nativos. Tu portapapeles siempre se restaura.")
             }
 
             Section("Permisos") {
                 LabeledContent("Accesibilidad") {
-                    HStack {
-                        Text(model.isTrusted ? "Concedido" : "Pendiente")
-                            .foregroundStyle(model.isTrusted ? .green : .orange)
-                        if !model.isTrusted {
-                            Button("Abrir Ajustes del Sistema") { Accessibility.openPrivacySettings() }
-                        }
+                    if model.isTrusted {
+                        Label("Concedido", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                    } else {
+                        Button("Abrir Ajustes del Sistema…") { Accessibility.openPrivacySettings() }
                     }
                 }
             }
         }
         .formStyle(.grouped)
-        .frame(width: 520)
-        .fixedSize()
-        .onAppear { model.refreshTrust() }
-        .task { await model.refreshEngineStatus() }
+        .frame(width: SettingsView.width, height: 500)
+    }
+
+    private func recordingChanged(_ isRecording: Bool) {
+        if isRecording { model.suspendHotKeys() } else { model.resumeHotKeys() }
+    }
+}
+
+struct TranslationSettingsTab: View {
+    let model: AppModel
+
+    var body: some View {
+        @Bindable var settings = model.settings
+
+        Form {
+            Section {
+                Picker("Motor", selection: $settings.engine) {
+                    ForEach(EngineKind.allCases) { Text($0.title).tag($0) }
+                }
+                LabeledContent("Estado") { engineStatus(settings.engine) }
+            } header: {
+                Text("Motor")
+            } footer: {
+                Footnote("Si el motor no está disponible, falla o tarda más de 20 s, se usa Apple Translation y el aviso lo indica.")
+            }
+
+            if settings.engine == .ollama {
+                Section {
+                    TextField("Servidor", text: $settings.ollamaURL, prompt: Text(AppSettings.defaultOllamaURL))
+                    LabeledContent("Modelo") {
+                        HStack(spacing: 8) {
+                            Picker("Modelo", selection: $settings.ollamaModel) {
+                                if !model.ollamaModels.contains(where: { $0.name == settings.ollamaModel }) {
+                                    Text(settings.ollamaModel.isEmpty ? "Ninguno" : settings.ollamaModel).tag(settings.ollamaModel)
+                                }
+                                ForEach(model.ollamaModels) { item in
+                                    Text(item.isCloud ? "\(item.name) (nube)" : item.name).tag(item.name)
+                                }
+                            }
+                            .labelsHidden()
+                            .fixedSize()
+                            Button {
+                                Task { await model.refreshEngineStatus() }
+                            } label: {
+                                Image(systemName: "arrow.clockwise")
+                            }
+                            .help("Actualizar la lista de modelos")
+                        }
+                    }
+                    if settings.ollamaModel.hasSuffix("cloud") {
+                        Label("Modelo en la nube de Ollama: el texto sale del Mac.", systemImage: "icloud")
+                            .foregroundStyle(.orange)
+                            .font(.callout)
+                    }
+                } header: {
+                    Text("Ollama")
+                } footer: {
+                    Footnote("Para un modelo local, ejecuta `ollama pull <modelo>` y pulsa ↻.")
+                }
+            }
+
+            if settings.engine.usesStyle {
+                Section {
+                    Picker("Tono", selection: $settings.tone) {
+                        ForEach(TranslationTone.allCases) { Text($0.title).tag($0) }
+                    }
+                    TextField("No traducir", text: $settings.glossaryText, prompt: Text("PR, deploy, staging…"))
+                    TextField("Instrucciones extra", text: $settings.extraInstructions, prompt: Text("Usa ortografía británica…"), axis: .vertical)
+                        .lineLimit(2...4)
+                } header: {
+                    Text("Estilo")
+                } footer: {
+                    Footnote("El tono y las instrucciones se aplican en la siguiente traducción.")
+                }
+            }
+
+            Section {
+                LabeledContent("Español ↔ Inglés") {
+                    HStack(spacing: 8) {
+                        Text(model.languageStatusText).foregroundStyle(.secondary)
+                        Button("Gestionar…") { model.showLanguageSetup() }
+                    }
+                }
+            } header: {
+                Text("Apple Translation")
+            } footer: {
+                Footnote("Paquetes de idioma del traductor de Apple, que es el motor de respaldo.")
+            }
+        }
+        .formStyle(.grouped)
+        .frame(width: SettingsView.width, height: 690)
         .onChange(of: settings.ollamaURL) { Task { await model.refreshEngineStatus() } }
     }
 
@@ -140,20 +169,91 @@ struct SettingsView: View {
     private func engineStatus(_ engine: EngineKind) -> some View {
         switch engine {
         case .appleIntelligence:
-            LabeledContent("Estado", value: model.appleIntelligenceStatus)
+            Text(model.appleIntelligenceStatus).foregroundStyle(.secondary)
         case .ollama:
-            LabeledContent("Estado", value: model.ollamaStatus == nil ? "Conectado" : "No disponible")
-        case .appleTranslation:
-            LabeledContent("Paquetes de idioma") {
-                HStack {
-                    Text(model.languageStatusText)
-                    Button("Gestionar…") { model.showLanguageSetup() }
-                }
+            if let problem = model.ollamaStatus {
+                Text(problem).foregroundStyle(.orange)
+            } else {
+                Label("Conectado", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
             }
+        case .appleTranslation:
+            Text(model.languageStatusText).foregroundStyle(.secondary)
         }
     }
+}
 
-    private func recordingChanged(_ isRecording: Bool) {
-        if isRecording { model.suspendHotKeys() } else { model.resumeHotKeys() }
+struct PromptSettingsTab: View {
+    let model: AppModel
+
+    var body: some View {
+        @Bindable var settings = model.settings
+
+        Form {
+            Section {
+                Picker("Perfil", selection: $settings.promptProfile) {
+                    ForEach(PromptProfile.allCases) { Text($0.title).tag($0) }
+                }
+                Toggle("Escribir el prompt en inglés", isOn: $settings.promptToEnglish)
+            } header: {
+                Text("Mejorar prompt")
+            } footer: {
+                Footnote(profileDescription(settings.promptProfile))
+            }
+
+            Section {
+                InfoRow("Nunca toca código, rutas, @menciones, URLs ni variables.", systemImage: "lock")
+                InfoRow("Muestra el resultado antes de reemplazar nada.", systemImage: "eye")
+                InfoRow("En la terminal, selecciona antes el texto del prompt.", systemImage: "terminal")
+            } header: {
+                Text("Cómo funciona")
+            } footer: {
+                Footnote("Usa el motor de la pestaña Traducción; con Apple Translation solo traduce.")
+            }
+        }
+        .formStyle(.grouped)
+        .frame(width: SettingsView.width, height: 340)
+    }
+
+    private func profileDescription(_ profile: PromptProfile) -> String {
+        switch profile {
+        case .agentTask: "Estructura el prompt en Objetivo, Contexto, Requisitos y Cuándo está terminado."
+        case .concise: "Lo deja en uno o dos párrafos claros y directos."
+        }
+    }
+}
+
+/// An icon and a sentence, with the icons in one column whatever their width.
+private struct InfoRow: View {
+    let text: String
+    let systemImage: String
+
+    init(_ text: String, systemImage: String) {
+        self.text = text
+        self.systemImage = systemImage
+    }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: systemImage)
+                .foregroundStyle(.secondary)
+                .frame(width: 20)
+            Text(text)
+        }
+    }
+}
+
+/// Secondary explanatory text under a settings section.
+private struct Footnote: View {
+    let text: LocalizedStringKey
+
+    init(_ text: String) {
+        self.text = LocalizedStringKey(text)
+    }
+
+    var body: some View {
+        Text(text)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }

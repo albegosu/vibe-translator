@@ -469,10 +469,6 @@ final class AppModel {
         registerHotKeys()
     }
 
-    func showSettings() {
-        windows.show(id: "settings", title: "Ajustes de VibeTranslator") { SettingsView(model: self) }
-    }
-
     func showLanguageSetup() {
         windows.show(id: "languages", title: "Idiomas de traducción") { LanguageSetupView(model: self) }
     }
