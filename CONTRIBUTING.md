@@ -31,7 +31,11 @@ open build/VibeTranslator.app
 
 macOS ties the Accessibility permission to the code signature, so with the default ad hoc signature you'll need to grant it again after every rebuild. The README explains how to [sign with a stable local certificate](README.md#keeping-the-accessibility-permission-across-rebuilds) to avoid that.
 
-If you change the icon, regenerate it with `swift scripts/make-icon.swift`.
+Handy scripts:
+
+- `swift scripts/make-icon.swift`: regenerates the app icon and the README logo.
+- `swift scripts/inspect-pasteboard.swift`: prints every format on the clipboard (read-only), including Chromium's web custom data. Copy something in an editor first; it shows how that editor serializes mentions, emoji and other rich content.
+- `scripts/make-demo-gif.sh <recording.mov>`: turns a screen recording into `docs/assets/demo.gif`.
 
 ## Project layout
 

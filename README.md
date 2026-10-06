@@ -39,14 +39,20 @@ It can also translate any text you select, in any app (English → Spanish or Sp
 ## Requirements
 
 - **macOS 26 or later** (uses `TranslationSession(installedSource:target:)`). Tested on macOS 27.
-- **Xcode 26+ / Swift 6.2+** to build.
+- **Xcode 26+ / Swift 6.2+** to build from source.
 - **Accessibility permission**, needed to read the focused field and send ⌘A / ⌘C / ⌘V.
 - **Spanish and English language packs** for Apple Translation, downloaded once from the app. They are also the fallback engine.
 - Optional: **Apple Intelligence** enabled, or **[Ollama](https://ollama.com)** with a model.
 
 ## Installation
 
-There are no prebuilt releases yet; build from source:
+### Download
+
+1. Get `VibeTranslator-*-macOS.zip` from the [latest release](https://github.com/albegosu/vibe-translator/releases/latest), unzip it and move **VibeTranslator.app** to `/Applications`.
+2. Open it. The app isn't notarized yet, so macOS blocks it the first time: go to *System Settings › Privacy & Security*, scroll down and click **Open Anyway** next to VibeTranslator.
+3. Continue with [First run](#first-run).
+
+### Build from source
 
 ```bash
 git clone https://github.com/albegosu/vibe-translator.git
@@ -55,7 +61,7 @@ scripts/build-app.sh
 open build/VibeTranslator.app
 ```
 
-`scripts/build-app.sh` builds a release binary, assembles `build/VibeTranslator.app` and signs it ad hoc.
+`scripts/build-app.sh` builds a release binary, assembles `build/VibeTranslator.app` and signs it ad hoc. Releases are built by CI when a `v*` tag is pushed (`.github/workflows/release.yml`).
 
 ### Keeping the Accessibility permission across rebuilds
 
@@ -160,7 +166,7 @@ Sources/VibeTranslator/           Menu bar app
   System/                         Accessibility, global shortcuts (Carbon), keyboard, clipboard
   Settings/ UI/ Diagnostics/      Settings, HUD, floating panel, validation report
 Tests/VibeTranslatorCoreTests/    Unit tests (Swift Testing)
-scripts/                          App bundle build and icon generation
+scripts/                          App bundle, icon, demo GIF and release notes
 ```
 
 ## Known limitations

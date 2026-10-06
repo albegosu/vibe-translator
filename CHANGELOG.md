@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-06
+
+First public release.
+
 ### Added
 
 - Menu bar app that translates the focused Discord draft from Spanish to English with a global shortcut, leaving it ready to send.
@@ -17,3 +21,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Style profile for LLM engines: tone, glossary and extra instructions.
 - Configurable shortcuts, settings window, HUD notifications and an app icon.
 - Technical validation diagnostics for the focused field.
+
+[Unreleased]: https://github.com/albegosu/vibe-translator/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/albegosu/vibe-translator/releases/tag/v0.1.0
