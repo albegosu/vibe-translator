@@ -32,8 +32,8 @@ struct ShortcutRecorder: View {
     }
 
     private var label: String {
-        if isRecording { return rejected ? "Usa ⌃, ⌥ o ⌘" : "Pulsa el atajo…" }
-        return shortcut?.displayString ?? "Sin atajo"
+        if isRecording { return rejected ? String(localized: "Usa ⌃, ⌥ o ⌘") : String(localized: "Pulsa el atajo…") }
+        return shortcut?.displayString ?? String(localized: "Sin atajo")
     }
 
     private func toggleRecording() {

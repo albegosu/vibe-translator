@@ -21,21 +21,21 @@ public enum TranslationEngineError: LocalizedError, Equatable {
     public var errorDescription: String? {
         switch self {
         case .languagesNotInstalled:
-            "Faltan idiomas del traductor de Apple. Descárgalos en Ajustes › Traducción › Apple Translation."
+            String(localized: "Faltan idiomas del traductor de Apple. Descárgalos en Ajustes › Traducción › Apple Translation.")
         case .unsupportedLanguagePair:
-            "Apple Translation no admite este par de idiomas."
+            String(localized: "Apple Translation no admite este par de idiomas.")
         case let .unavailable(reason):
             reason
         case let .resultCountMismatch(expected, got):
-            "El motor devolvió \(got) líneas en lugar de \(expected)."
+            String(localized: "El motor devolvió \(got) líneas en lugar de \(expected).")
         case .invalidResponse:
-            "El motor devolvió una respuesta con un formato no válido."
+            String(localized: "El motor devolvió una respuesta con un formato no válido.")
         case .implausibleOutput:
-            "El motor devolvió algo que no parece una traducción."
+            String(localized: "El motor devolvió algo que no parece una traducción.")
         case .timedOut:
-            "La traducción ha tardado demasiado."
+            String(localized: "La traducción ha tardado demasiado.")
         case .leakedPlaceholders:
-            "La traducción traía marcadores internos y no se ha aplicado. Vuelve a intentarlo."
+            String(localized: "La traducción traía marcadores internos y no se ha aplicado. Vuelve a intentarlo.")
         }
     }
 }

@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- English interface. The app follows your system language: Spanish if it's your first match, English otherwise.
+
+### Changed
+
+- The diagnostics report is always in English, ready to paste into an issue.
+- Language names in the app follow the interface language.
+
 ## [0.4.0] - 2026-10-06
 
 ### Added

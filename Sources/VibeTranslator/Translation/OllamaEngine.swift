@@ -25,7 +25,7 @@ final class OllamaEngine: TranslationEngine, TextRewriter, @unchecked Sendable {
 
     func translate(_ texts: [String], from source: Locale.Language, to target: Locale.Language) async throws -> [String] {
         guard !texts.isEmpty else { return [] }
-        guard !model.isEmpty else { throw TranslationEngineError.unavailable("Elige un modelo de Ollama en Ajustes.") }
+        guard !model.isEmpty else { throw TranslationEngineError.unavailable(String(localized: "Elige un modelo de Ollama en Ajustes.")) }
 
         var body: [String: Any] = [
             "model": model,
@@ -49,7 +49,7 @@ final class OllamaEngine: TranslationEngine, TextRewriter, @unchecked Sendable {
     }
 
     func rewrite(_ text: String, instructions: String) async throws -> String {
-        guard !model.isEmpty else { throw TranslationEngineError.unavailable("Elige un modelo de Ollama en Ajustes.") }
+        guard !model.isEmpty else { throw TranslationEngineError.unavailable(String(localized: "Elige un modelo de Ollama en Ajustes.")) }
         var body: [String: Any] = [
             "model": model,
             "stream": false,
@@ -102,7 +102,7 @@ final class OllamaEngine: TranslationEngine, TextRewriter, @unchecked Sendable {
         do {
             return try await URLSession.shared.data(for: request)
         } catch let error as URLError where [.cannotConnectToHost, .cannotFindHost, .networkConnectionLost].contains(error.code) {
-            throw TranslationEngineError.unavailable("Ollama no está en marcha. Abre Ollama.app.")
+            throw TranslationEngineError.unavailable(String(localized: "Ollama no está en marcha. Abre Ollama.app."))
         }
     }
 }

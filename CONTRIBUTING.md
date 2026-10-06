@@ -52,7 +52,16 @@ See the [README](README.md#how-it-works) for how drafts are read, protected, tra
 ### Code
 
 - Follow the style of the surrounding code: Swift 6 strict concurrency, `@MainActor` for anything touching AppKit or Accessibility, small focused types.
-- Code, identifiers and comments are in **English**. User-facing strings are currently in **Spanish**.
+- Code, identifiers and comments are in **English**. User-facing strings are written in **Spanish** in the code (they're the localization keys) and translated to English in `scripts/localizations.py`, which generates `Resources/*.lproj/Localizable.strings`. In SwiftUI use string literals; elsewhere use `String(localized:)`. After adding or changing strings, extract the keys and regenerate:
+
+  ```bash
+  swift build -Xswiftc -emit-localized-strings -Xswiftc -emit-localized-strings-path -Xswiftc /tmp/vt-strings
+  python3 -c "import json,glob; print(json.dumps(sorted({e['key'] for f in glob.glob('/tmp/vt-strings/*.stringsdata') for t in json.load(open(f))['tables'].values() for e in t})))" > /tmp/vt-keys.json
+  python3 scripts/localizations.py /tmp/vt-keys.json
+  ```
+
+  The script fails on missing or unused translations and on mismatched format specifiers.
+- The diagnostics report is always in English, because it's meant to be pasted into issues.
 - Keep logic that can be tested in `VibeTranslatorCore`, and add or update tests for it.
 - Never weaken the safety guarantees: the draft must only be replaced if the field and text are unchanged, the user's clipboard must always be restored, and nothing may ever be sent on the user's behalf.
 - Don't add dependencies without discussing it in an issue first.

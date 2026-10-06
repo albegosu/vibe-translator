@@ -10,44 +10,44 @@ enum Diagnostics {
     static func run(writeTest: Bool, settings: AppSettings) async -> String {
         var report = Report()
 
-        report.section("Sistema")
-        report.line("Fecha", Date().formatted(.iso8601))
+        report.section("System")
+        report.line("Date", Date().formatted(.iso8601))
         report.line("macOS", ProcessInfo.processInfo.operatingSystemVersionString)
-        report.line("VibeTranslator", Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "desarrollo")
-        report.line("Permiso de Accesibilidad", Accessibility.isTrusted ? "concedido" : "NO concedido")
+        report.line("VibeTranslator", Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "development")
+        report.line("Accessibility permission", Accessibility.isTrusted ? "granted" : "NOT granted")
         let languages = await AppleTranslationEngine.availability(from: settings.nativeLanguage.language, to: settings.targetLanguage.language)
-        report.line("Idiomas", "\(settings.nativeLanguage.id) → \(settings.targetLanguage.id)")
+        report.line("Languages", "\(settings.nativeLanguage.id) → \(settings.targetLanguage.id)")
         report.line("Apple Translation", "\(languages)")
-        report.line("Método configurado", settings.accessMode.title)
-        report.line("Motor configurado", settings.engine.title)
+        report.line("Access method", settings.accessMode.rawValue)
+        report.line("Engine", settings.engine.rawValue)
         report.line("Apple Intelligence", AppleIntelligenceEngine.statusText)
         if let models = try? await OllamaEngine.installedModels(baseURL: settings.ollamaBaseURL) {
-            report.line("Ollama", models.isEmpty ? "en marcha, sin modelos" : models.map { $0.isCloud ? "\($0.name) (nube)" : $0.name }.joined(separator: ", "))
+            report.line("Ollama", models.isEmpty ? "running, no models" : models.map { $0.isCloud ? "\($0.name) (cloud)" : $0.name }.joined(separator: ", "))
         } else {
-            report.line("Ollama", "no responde en \(settings.ollamaBaseURL.absoluteString)")
+            report.line("Ollama", "not responding at \(settings.ollamaBaseURL.absoluteString)")
         }
 
         guard Accessibility.isTrusted else {
-            report.note("Sin permiso de Accesibilidad no se puede analizar el campo.")
+            report.note("Without the Accessibility permission the field can't be inspected.")
             return report.text
         }
         guard let app = NSWorkspace.shared.frontmostApplication else {
-            report.note("No hay ninguna app activa.")
+            report.note("No frontmost app.")
             return report.text
         }
 
         let accessor = DraftAccessor(app: app, mode: settings.accessMode)
-        report.section("App activa")
-        report.line("Nombre", app.localizedName ?? "—")
+        report.section("Frontmost app")
+        report.line("Name", app.localizedName ?? "—")
         report.line("Bundle ID", app.bundleIdentifier ?? "—")
-        report.line("Versión", app.bundleURL.flatMap { Bundle(url: $0)?.infoDictionary?["CFBundleShortVersionString"] as? String } ?? "—")
-        report.line("Electron", accessor.isElectron ? "sí" : "no")
+        report.line("Version", app.bundleURL.flatMap { Bundle(url: $0)?.infoDictionary?["CFBundleShortVersionString"] as? String } ?? "—")
+        report.line("Electron", accessor.isElectron ? "yes" : "no")
         if let result = accessor.manualAccessibilityResult {
             report.line("AXManualAccessibility ← true", result.name)
         }
-        report.line("Ventana", accessor.focusedWindowTitle ?? "—")
+        report.line("Window", accessor.focusedWindowTitle ?? "—")
 
-        report.section("Elemento con foco (Accesibilidad)")
+        report.section("Focused element (Accessibility)")
         let element = await accessor.focusedElement()
         let axValue = element?.stringValue
         if let element {
@@ -56,80 +56,80 @@ enum Diagnostics {
             report.line("AXRoleDescription", element.string(kAXRoleDescriptionAttribute) ?? "—")
             report.line("AXDOMIdentifier", element.string("AXDOMIdentifier") ?? "—")
             report.line("AXDOMClassList", (element.attribute("AXDOMClassList") as? [String])?.joined(separator: " ") ?? "—")
-            report.line("Se considera campo de texto", element.isTextInput ? "sí" : "no")
-            report.line("AXValue", axValue.map { "\($0.count) caracteres" } ?? "no disponible")
+            report.line("Treated as a text field", element.isTextInput ? "yes" : "no")
+            report.line("AXValue", axValue.map { "\($0.count) characters" } ?? "not available")
             if let axValue {
                 report.line("AXValue (vista previa)", preview(axValue))
-                report.line("Contiene U+FFFC (objetos incrustados)", axValue.contains("\u{FFFC}") ? "sí" : "no")
+                report.line("Contains U+FFFC (embedded objects)", axValue.contains("\u{FFFC}") ? "yes" : "no")
             }
             report.line("AXSelectedTextRange", element.selectedRange.map { "\($0.location)+\($0.length)" } ?? "—")
-            report.line("Escribible AXValue", element.isSettable(kAXValueAttribute) ? "sí" : "no")
-            report.line("Escribible AXSelectedText", element.isSettable(kAXSelectedTextAttribute) ? "sí" : "no")
-            report.line("Escribible AXSelectedTextRange", element.isSettable(kAXSelectedTextRangeAttribute) ? "sí" : "no")
-            report.line("Atributos", element.attributeNames.joined(separator: ", "))
-            report.line("Atributos parametrizados", element.parameterizedAttributeNames.joined(separator: ", "))
+            report.line("Writable AXValue", element.isSettable(kAXValueAttribute) ? "yes" : "no")
+            report.line("Writable AXSelectedText", element.isSettable(kAXSelectedTextAttribute) ? "yes" : "no")
+            report.line("Writable AXSelectedTextRange", element.isSettable(kAXSelectedTextRangeAttribute) ? "yes" : "no")
+            report.line("Attributes", element.attributeNames.joined(separator: ", "))
+            report.line("Parameterized attributes", element.parameterizedAttributeNames.joined(separator: ", "))
         } else {
-            report.line("Elemento con foco", "no disponible")
+            report.line("Focused element", "not available")
         }
 
-        report.section("Lectura por portapapeles (⌘A ⌘C, portapapeles restaurado)")
+        report.section("Clipboard read (⌘A ⌘C, clipboard restored)")
         do {
             let copied = try await accessor.copyAll()
             await KeyboardSimulator.collapseSelectionToEnd()
-            report.line("Texto copiado", "\(copied.count) caracteres")
-            report.line("Vista previa", preview(copied))
+            report.line("Copied text", "\(copied.count) characters")
+            report.line("Preview", preview(copied))
             if let axValue {
-                report.line("Igual que AXValue", DraftText.isSame(copied, axValue) ? "sí" : "no")
+                report.line("Same as AXValue", DraftText.isSame(copied, axValue) ? "yes" : "no")
             }
         } catch {
-            report.line("Resultado", error.localizedDescription)
+            report.line("Result", error.localizedDescription)
         }
 
         if writeTest {
             await runWriteTest(accessor: accessor, element: element, into: &report)
         }
 
-        report.section("Conclusión")
-        report.line("Automático usaría", automaticChoice(accessor: accessor, element: element))
+        report.section("Conclusion")
+        report.line("Automatic would use", automaticChoice(accessor: accessor, element: element))
         return report.text
     }
 
     private static func runWriteTest(accessor: DraftAccessor, element: AXUIElement?, into report: inout Report) async {
-        report.section("Prueba de escritura")
+        report.section("Write test")
         let current = (try? await accessor.copyAll()) ?? element?.stringValue ?? ""
         await KeyboardSimulator.collapseSelectionToEnd()
         guard DraftText.normalized(current).isEmpty else {
-            report.note("Omitida: el borrador no está vacío. Vacíalo y repite para probar la escritura.")
+            report.note("Skipped: the draft isn't empty. Empty it and run again to test writing.")
             return
         }
 
         // A) Accessibility: does replacing the selection reach the editor's model?
         if let element, element.isTextInput {
-            let marker = "VibeTranslator prueba AX"
+            let marker = "VibeTranslator AX test"
             let result = element.set(kAXSelectedTextAttribute, marker as CFString)
             try? await Task.sleep(for: .milliseconds(200))
             let modelText = try? await accessor.copyAll()
-            report.line("A. AXSelectedText ← texto", result.name)
-            report.line("A. AXValue después", preview(element.stringValue ?? "—"))
-            report.line("A. Lo que copia el editor después", preview(modelText ?? "—"))
-            report.line("A. Escritura AX llega al editor", modelText.map { DraftText.isSame($0, marker) } == true ? "SÍ" : "NO")
+            report.line("A. AXSelectedText ← text", result.name)
+            report.line("A. AXValue afterwards", preview(element.stringValue ?? "—"))
+            report.line("A. What the editor copies afterwards", preview(modelText ?? "—"))
+            report.line("A. AX write reaches the editor", modelText.map { DraftText.isSame($0, marker) } == true ? "YES" : "NO")
             await clearDraft(accessor: accessor, element: element, copied: modelText)
         } else {
-            report.line("A. Escritura AX", "omitida: no hay campo de texto accesible")
+            report.line("A. AX write", "skipped: no accessible text field")
         }
 
         // B) Clipboard paste, multi-line, as the translation would be written.
-        let marker = "VibeTranslator prueba pegado\nsegunda línea"
+        let marker = "VibeTranslator paste test\nsecond line"
         let saved = ClipboardSnapshot()
         let ours = Clipboard.writeTransient(marker)
         await KeyboardSimulator.command("v")
         try? await Task.sleep(for: .milliseconds(400))
         saved.restore(ifChangeCountIs: ours)
         let pasted = try? await accessor.copyAll()
-        report.line("B. Lo que copia el editor tras ⌘V", preview(pasted ?? "—"))
-        report.line("B. Pegado multilínea correcto", pasted.map { DraftText.isSame($0, marker) } == true ? "SÍ" : "NO")
+        report.line("B. What the editor copies after ⌘V", preview(pasted ?? "—"))
+        report.line("B. Multi-line paste intact", pasted.map { DraftText.isSame($0, marker) } == true ? "YES" : "NO")
         if let element {
-            report.line("B. AXValue tras ⌘V", preview(element.stringValue ?? "—"))
+            report.line("B. AXValue after ⌘V", preview(element.stringValue ?? "—"))
         }
         await clearDraft(accessor: accessor, element: element, copied: pasted)
     }
@@ -144,11 +144,11 @@ enum Diagnostics {
     }
 
     private static func automaticChoice(accessor: DraftAccessor, element: AXUIElement?) -> String {
-        if accessor.isElectron { return "Portapapeles (app Electron: el editor gestiona su propio modelo)" }
-        guard let element, let value = element.stringValue else { return "Portapapeles (sin AXValue)" }
-        if value.contains("\u{FFFC}") { return "Portapapeles (AXValue no representa objetos incrustados)" }
-        if element.isSettable(kAXSelectedTextAttribute) || element.isSettable(kAXValueAttribute) { return "Accesibilidad" }
-        return "Portapapeles (campo no escribible por AX)"
+        if accessor.isElectron { return "Clipboard (Electron app: the editor keeps its own model)" }
+        guard let element, let value = element.stringValue else { return "Clipboard (no AXValue)" }
+        if value.contains("\u{FFFC}") { return "Clipboard (AXValue can't represent embedded objects)" }
+        if element.isSettable(kAXSelectedTextAttribute) || element.isSettable(kAXValueAttribute) { return "Accessibility" }
+        return "Clipboard (field not writable through AX)"
     }
 
     private static func preview(_ text: String) -> String {
@@ -159,7 +159,7 @@ enum Diagnostics {
     static func save(_ report: String) -> URL? {
         let folder = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/VibeTranslator", isDirectory: true)
         let stamp = Date().formatted(.iso8601).replacingOccurrences(of: ":", with: "-")
-        let file = folder.appendingPathComponent("diagnostico-\(stamp).txt")
+        let file = folder.appendingPathComponent("diagnostics-\(stamp).txt")
         do {
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             try report.write(to: file, atomically: true, encoding: .utf8)

@@ -185,7 +185,7 @@ struct EngineChain {
     }
 
     mutating func translate(_ inputs: [String]) async throws -> [String] {
-        var lastError: Error = TranslationEngineError.unavailable("No hay ningún motor de traducción configurado.")
+        var lastError: Error = TranslationEngineError.unavailable(String(localized: "No hay ningún motor de traducción configurado."))
         while let engine = remaining.first {
             do {
                 let (source, target) = (source, target)

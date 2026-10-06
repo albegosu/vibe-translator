@@ -120,7 +120,7 @@ private struct AllowedAppsEditor: View {
         panel.allowedContentTypes = [.application]
         panel.allowsMultipleSelection = true
         panel.directoryURL = URL(fileURLWithPath: "/Applications")
-        panel.prompt = "Añadir"
+        panel.prompt = String(localized: "Añadir")
         guard panel.runModal() == .OK else { return }
         for url in panel.urls {
             guard let bundleID = Bundle(url: url)?.bundleIdentifier, !apps.contains(where: { $0.bundleID == bundleID }) else { continue }
@@ -140,7 +140,7 @@ private struct AllowedAppsEditor: View {
 struct TranslationSettingsTab: View {
     let model: AppModel
 
-    private static let languages = TranslationLanguage.catalog.sorted { $0.displayName() < $1.displayName() }
+    private static let languages = TranslationLanguage.catalog.sorted { $0.displayName(in: .ui) < $1.displayName(in: .ui) }
 
     var body: some View {
         @Bindable var settings = model.settings
@@ -148,10 +148,10 @@ struct TranslationSettingsTab: View {
         Form {
             Section {
                 Picker("Mi idioma", selection: $settings.nativeLanguage) {
-                    ForEach(Self.languages) { Text($0.displayName()).tag($0) }
+                    ForEach(Self.languages) { Text($0.displayName(in: .ui)).tag($0) }
                 }
                 Picker("Traducir a", selection: $settings.targetLanguage) {
-                    ForEach(Self.languages) { Text($0.displayName()).tag($0) }
+                    ForEach(Self.languages) { Text($0.displayName(in: .ui)).tag($0) }
                 }
                 if !settings.languagesAreValid {
                     Label("Elige dos idiomas distintos.", systemImage: "exclamationmark.triangle.fill")
@@ -182,7 +182,7 @@ struct TranslationSettingsTab: View {
                         HStack(spacing: 8) {
                             Picker("Modelo", selection: $settings.ollamaModel) {
                                 if !model.ollamaModels.contains(where: { $0.name == settings.ollamaModel }) {
-                                    Text(settings.ollamaModel.isEmpty ? "Ninguno" : settings.ollamaModel).tag(settings.ollamaModel)
+                                    Text(settings.ollamaModel.isEmpty ? String(localized: "Ninguno") : settings.ollamaModel).tag(settings.ollamaModel)
                                 }
                                 ForEach(model.ollamaModels) { item in
                                     Text(item.isCloud ? "\(item.name) (nube)" : item.name).tag(item.name)
@@ -275,7 +275,7 @@ struct PromptSettingsTab: View {
             } header: {
                 Text("Mejorar prompt")
             } footer: {
-                Footnote(profileDescription(settings.promptProfile))
+                Footnote(verbatim: profileDescription(settings.promptProfile))
             }
 
             Section {
@@ -294,18 +294,18 @@ struct PromptSettingsTab: View {
 
     private func profileDescription(_ profile: PromptProfile) -> String {
         switch profile {
-        case .agentTask: "Estructura el prompt en Objetivo, Contexto, Requisitos y Cuándo está terminado."
-        case .concise: "Lo deja en uno o dos párrafos claros y directos."
+        case .agentTask: String(localized: "Estructura el prompt en Objetivo, Contexto, Requisitos y Cuándo está terminado.")
+        case .concise: String(localized: "Lo deja en uno o dos párrafos claros y directos.")
         }
     }
 }
 
 /// An icon and a sentence, with the icons in one column whatever their width.
 private struct InfoRow: View {
-    let text: String
+    let text: LocalizedStringKey
     let systemImage: String
 
-    init(_ text: String, systemImage: String) {
+    init(_ text: LocalizedStringKey, systemImage: String) {
         self.text = text
         self.systemImage = systemImage
     }
@@ -322,14 +322,18 @@ private struct InfoRow: View {
 
 /// Secondary explanatory text under a settings section.
 private struct Footnote: View {
-    let text: LocalizedStringKey
+    let text: Text
 
-    init(_ text: String) {
-        self.text = LocalizedStringKey(text)
+    init(_ key: LocalizedStringKey) {
+        text = Text(key)
+    }
+
+    init(verbatim string: String) {
+        text = Text(verbatim: string)
     }
 
     var body: some View {
-        Text(text)
+        text
             .font(.caption)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)

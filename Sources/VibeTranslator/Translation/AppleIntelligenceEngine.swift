@@ -60,8 +60,12 @@ final class AppleIntelligenceEngine: TranslationEngine, TextRewriter, @unchecked
         }
     }
 
+    static var isAvailable: Bool {
+        unavailableReason(SystemLanguageModel.default.availability) == nil
+    }
+
     static var statusText: String {
-        unavailableReason(SystemLanguageModel.default.availability) ?? "Disponible"
+        unavailableReason(SystemLanguageModel.default.availability) ?? String(localized: "Disponible")
     }
 
     static func unavailableReason(_ availability: SystemLanguageModel.Availability) -> String? {
@@ -69,13 +73,13 @@ final class AppleIntelligenceEngine: TranslationEngine, TextRewriter, @unchecked
         case .available:
             nil
         case .unavailable(.deviceNotEligible):
-            "Este Mac no admite Apple Intelligence."
+            String(localized: "Este Mac no admite Apple Intelligence.")
         case .unavailable(.appleIntelligenceNotEnabled):
-            "Apple Intelligence está desactivado en Ajustes del Sistema."
+            String(localized: "Apple Intelligence está desactivado en Ajustes del Sistema.")
         case .unavailable(.modelNotReady):
-            "El modelo de Apple Intelligence aún se está descargando o preparando."
+            String(localized: "El modelo de Apple Intelligence aún se está descargando o preparando.")
         case .unavailable:
-            "Apple Intelligence no está disponible."
+            String(localized: "Apple Intelligence no está disponible.")
         }
     }
 }
