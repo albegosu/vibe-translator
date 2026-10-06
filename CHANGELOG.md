@@ -6,9 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-06
+
 ### Added
 
-- Improve prompt (experimental, `⌃⌥P`): rewrites the selection or the focused field into a structured prompt (optionally in English) for AI assistants and coding agents, keeping code blocks, file paths, @mentions, URLs, template variables and XML tags intact, with a preview before replacing.
+- Improve prompt (experimental, `⌃⌥P`): rewrites the selection or the focused field into a clear prompt (optionally in English) for AI assistants and coding agents, with a preview before replacing. Small requests stay one or two sentences; larger ones get only the sections that add information. Code blocks, file paths, @mentions, URLs, template variables and XML tags are kept intact.
+- `VibeTranslator --render-settings <folder>` exports every settings tab as PNG, in light and dark appearance.
+
+### Changed
+
+- Settings is now the standard macOS settings window with General, Traducción and Prompts tabs; each tab scrolls instead of growing past the screen.
+- The floating panel takes the keyboard while open: ↩ runs the main action, esc closes and ⌘C copies. Closing it gives the focus back to the app you were in.
+
+### Fixed
+
+- The floating panel no longer runs past the bottom of the screen; near the bottom it grows upwards.
+- A Return pressed while the floating panel was open could reach the app underneath and send a chat message.
 
 ## [0.1.0] - 2026-10-06
 
@@ -26,5 +39,6 @@ First public release.
 - Configurable shortcuts, settings window, HUD notifications and an app icon.
 - Technical validation diagnostics for the focused field.
 
-[Unreleased]: https://github.com/albegosu/vibe-translator/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/albegosu/vibe-translator/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/albegosu/vibe-translator/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/albegosu/vibe-translator/releases/tag/v0.1.0
