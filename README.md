@@ -22,7 +22,7 @@
 
 ---
 
-VibeTranslator is a native macOS menu bar app written in Swift. Press a shortcut while writing in Discord and your Spanish draft is replaced with a natural English translation. Mentions, links, emoji, code and formatting stay intact. The app never sends anything: you stay in control of the final message.
+VibeTranslator is a native macOS menu bar app written in Swift. Press a shortcut while writing in Discord (or any other app) and your Spanish draft is replaced with a natural English translation. Mentions, links, emoji, code and formatting stay intact. The app never sends anything: you stay in control of the final message.
 
 It can also translate any text you select, in any app (English → Spanish or Spanish → English), and show the result in a floating panel.
 
@@ -31,7 +31,7 @@ It can also translate any text you select, in any app (English → Spanish or Sp
 
 ## Features
 
-- **Translate your draft**: one global shortcut translates the whole Discord draft in place, ready to send.
+- **Translate your draft**: one global shortcut translates the whole draft in place, ready to send. Built for Discord, it works in any app (Slack, Teams, Mail…), or only in the apps you choose.
 - **Translate a selection**: select text anywhere (someone's message, a web page, a PDF) and get the translation in a floating panel next to the cursor, with **Copy** and, if the selection is editable, **Replace**. The language is detected automatically.
 - **Improve a prompt** *(experimental)*: turn a rough request, in Spanish or English, into a clear, structured prompt in English for an AI assistant or coding agent. Code blocks, file paths, `@mentions`, URLs, `{{variables}}` and XML tags are kept intact. Preview it in the floating panel, then **Replace** or **Copy**.
 - **Natural, not literal**: by default an LLM translates with a tone profile ("relaxed technical" out of the box), a glossary of terms to keep, and your own instructions. Idioms and slang are rendered by meaning.
@@ -95,7 +95,7 @@ CODESIGN_IDENTITY="VibeTranslator Dev" scripts/build-app.sh
 | `⌃⌥Y` | Translate the selected text in a floating panel (direction detected automatically) |
 | `⌃⌥P` | Improve the selected prompt, or the whole field, and preview it before replacing (experimental) |
 
-All shortcuts can be changed or removed in Settings. The draft shortcut only acts in Discord by default ("Traducir el borrador solo en Discord"); translating a selection and improving a prompt work in any app. In terminals (Claude Code and friends) select the prompt text first.
+All shortcuts can be changed or removed in Settings. Every action works in any app; in **Settings › General** you can limit draft translation to a list of apps. Terminals (Claude Code and friends) never get their whole input translated, because pasting several lines into a shell runs them: select the text and use translate selection or improve prompt instead.
 
 **Improve prompt** has two profiles in Settings: *Tarea para agente de código* (Goal / Context / Requirements / Done when) and *Pregunta concisa*. It never adds requirements you didn't write, and it lists open questions instead of guessing. It needs an LLM engine (Ollama or Apple Intelligence); with Apple Translation it only translates.
 
@@ -184,6 +184,7 @@ scripts/demo/                     Renders the README demo (Playwright + ffmpeg)
 - Tone only applies to LLM engines; Apple Translation doesn't take instructions.
 - Replacing a selection has no "Restore original"; use ⌘Z in the app itself.
 - Markdown links (`[text](url)`) are kept whole, without translating the text.
+- Drafts longer than 4,000 characters aren't translated whole (in a code editor ⌘A selects the entire file): select the part you want and use translate selection.
 - A translation longer than Discord's character limit may make Discord offer to send it as a file.
 
 ## Contributing

@@ -1,4 +1,6 @@
+import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 import VibeTranslatorCore
 
 /// Standard macOS settings: toolbar tabs, each a grouped form with a fixed size that
@@ -50,14 +52,21 @@ struct GeneralSettingsTab: View {
             }
 
             Section {
+                Picker("Traducir el borrador en", selection: $settings.appScope.mode) {
+                    Text("Todas las apps").tag(AppScopeMode.allApps)
+                    Text("Solo en estas apps").tag(AppScopeMode.selectedApps)
+                }
+                if settings.appScope.mode == .selectedApps {
+                    AllowedAppsEditor(apps: $settings.appScope.apps)
+                }
                 Picker("Método", selection: $settings.accessMode) {
                     ForEach(AccessMode.allCases) { Text($0.title).tag($0) }
                 }
-                Toggle("Traducir el borrador solo en Discord", isOn: $settings.onlyInDiscord)
+                .help("Automático usa el portapapeles en apps como Discord o Slack y Accesibilidad en campos nativos. Tu portapapeles siempre se restaura.")
             } header: {
-                Text("Acceso al borrador")
+                Text("Borrador")
             } footer: {
-                Footnote("Automático usa el portapapeles en apps como Discord y Accesibilidad en campos nativos. Tu portapapeles siempre se restaura.")
+                Footnote("En las terminales nunca se traduce el borrador entero: selecciona el texto y usa «Traducir selección» o «Mejorar prompt».")
             }
 
             Section("Permisos") {
@@ -71,11 +80,60 @@ struct GeneralSettingsTab: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: SettingsView.width, height: 500)
+        .frame(width: SettingsView.width, height: 560)
     }
 
     private func recordingChanged(_ isRecording: Bool) {
         if isRecording { model.suspendHotKeys() } else { model.resumeHotKeys() }
+    }
+}
+
+/// The apps "translate draft" is limited to, with their icons.
+private struct AllowedAppsEditor: View {
+    @Binding var apps: [AllowedApp]
+
+    var body: some View {
+        if apps.isEmpty {
+            Text("Ninguna app: añade al menos una.").foregroundStyle(.orange).font(.callout)
+        }
+        ForEach(apps) { app in
+            HStack(spacing: 8) {
+                Image(nsImage: Self.icon(for: app.bundleID))
+                    .resizable()
+                    .frame(width: 18, height: 18)
+                Text(app.name)
+                Spacer()
+                Button {
+                    apps.removeAll { $0.bundleID == app.bundleID }
+                } label: {
+                    Image(systemName: "minus.circle.fill").foregroundStyle(.secondary)
+                }
+                .buttonStyle(.borderless)
+                .help("Quitar \(app.name)")
+            }
+        }
+        Button("Añadir app…", action: addApps)
+    }
+
+    private func addApps() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.application]
+        panel.allowsMultipleSelection = true
+        panel.directoryURL = URL(fileURLWithPath: "/Applications")
+        panel.prompt = "Añadir"
+        guard panel.runModal() == .OK else { return }
+        for url in panel.urls {
+            guard let bundleID = Bundle(url: url)?.bundleIdentifier, !apps.contains(where: { $0.bundleID == bundleID }) else { continue }
+            let name = FileManager.default.displayName(atPath: url.path).replacingOccurrences(of: ".app", with: "")
+            apps.append(AllowedApp(bundleID: bundleID, name: name))
+        }
+    }
+
+    private static func icon(for bundleID: String) -> NSImage {
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else {
+            return NSImage(systemSymbolName: "app.dashed", accessibilityDescription: nil) ?? NSImage()
+        }
+        return NSWorkspace.shared.icon(forFile: url.path)
     }
 }
 

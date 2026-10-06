@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- Draft translation works in any app by default. The old "only in Discord" switch is now an optional list of apps (Settings › General); if you had it on, your list starts with Discord.
+- The LLM prompt no longer assumes the text comes from Discord.
+
+### Fixed
+
+- Draft translation is blocked in terminals, where pasting several lines would run them as commands.
+- Drafts over 4,000 characters aren't translated whole (⌘A in a code editor selects the entire file).
+
 ## [0.2.0] - 2026-10-06
 
 ### Added

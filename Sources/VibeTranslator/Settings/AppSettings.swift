@@ -24,11 +24,6 @@ enum EngineKind: String, CaseIterable, Identifiable {
 @MainActor
 @Observable
 final class AppSettings {
-    /// Discord stable, PTB, Canary and development builds.
-    static let discordBundleIDs: Set<String> = [
-        "com.hnc.Discord", "com.hnc.DiscordPTB", "com.hnc.DiscordCanary", "com.hnc.DiscordDevelopment",
-    ]
-
     @ObservationIgnored private let defaults: UserDefaults
     /// Called when a shortcut changes so hot keys can be re-registered.
     @ObservationIgnored var onShortcutsChanged: (() -> Void)?
@@ -65,8 +60,9 @@ final class AppSettings {
         didSet { defaults.set(engine.rawValue, forKey: Keys.engine) }
     }
 
-    var onlyInDiscord: Bool {
-        didSet { defaults.set(onlyInDiscord, forKey: Keys.onlyInDiscord) }
+    /// Apps where "translate draft" may act (all of them unless the user picks some).
+    var appScope: AppScope {
+        didSet { defaults.set(try? JSONEncoder().encode(appScope), forKey: Keys.appScope) }
     }
 
     var tone: TranslationTone {
@@ -110,16 +106,13 @@ final class AppSettings {
         promptToEnglish = defaults.object(forKey: Keys.promptToEnglish) as? Bool ?? true
         accessMode = defaults.string(forKey: Keys.accessMode).flatMap(AccessMode.init(rawValue:)) ?? .automatic
         engine = defaults.string(forKey: Keys.engine).flatMap(EngineKind.init(rawValue:)) ?? .appleIntelligence
-        onlyInDiscord = defaults.object(forKey: Keys.onlyInDiscord) as? Bool ?? true
+        appScope = defaults.data(forKey: Keys.appScope).flatMap { try? JSONDecoder().decode(AppScope.self, from: $0) }
+            ?? AppScope.migrated(onlyInDiscord: defaults.object(forKey: Keys.legacyOnlyInDiscord) as? Bool)
         tone = defaults.string(forKey: Keys.tone).flatMap(TranslationTone.init(rawValue:)) ?? .relaxedTechnical
         glossaryText = defaults.string(forKey: Keys.glossary) ?? ""
         extraInstructions = defaults.string(forKey: Keys.extraInstructions) ?? ""
         ollamaURL = defaults.string(forKey: Keys.ollamaURL) ?? Self.defaultOllamaURL
         ollamaModel = defaults.string(forKey: Keys.ollamaModel) ?? ""
-    }
-
-    func isAllowed(bundleID: String?) -> Bool {
-        !onlyInDiscord || bundleID.map(Self.discordBundleIDs.contains) == true
     }
 
     // A cleared shortcut is stored as an explicit "none" so it doesn't come back as the default.
@@ -146,7 +139,8 @@ final class AppSettings {
         static let promptToEnglish = "promptToEnglish"
         static let accessMode = "accessMode"
         static let engine = "engine"
-        static let onlyInDiscord = "onlyInDiscord"
+        static let appScope = "appScope"
+        static let legacyOnlyInDiscord = "onlyInDiscord"
         static let tone = "tone"
         static let glossary = "glossary"
         static let extraInstructions = "extraInstructions"
