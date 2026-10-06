@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-06
+
 ### Added
 
 - English interface. The app follows your system language: Spanish if it's your first match, English otherwise.
@@ -81,7 +83,8 @@ First public release.
 - Configurable shortcuts, settings window, HUD notifications and an app icon.
 - Technical validation diagnostics for the focused field.
 
-[Unreleased]: https://github.com/albegosu/vibe-translator/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/albegosu/vibe-translator/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/albegosu/vibe-translator/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/albegosu/vibe-translator/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/albegosu/vibe-translator/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/albegosu/vibe-translator/compare/v0.1.0...v0.2.0
