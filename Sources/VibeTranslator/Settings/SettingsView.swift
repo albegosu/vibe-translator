@@ -140,10 +140,30 @@ private struct AllowedAppsEditor: View {
 struct TranslationSettingsTab: View {
     let model: AppModel
 
+    private static let languages = TranslationLanguage.catalog.sorted { $0.displayName() < $1.displayName() }
+
     var body: some View {
         @Bindable var settings = model.settings
 
         Form {
+            Section {
+                Picker("Mi idioma", selection: $settings.nativeLanguage) {
+                    ForEach(Self.languages) { Text($0.displayName()).tag($0) }
+                }
+                Picker("Traducir a", selection: $settings.targetLanguage) {
+                    ForEach(Self.languages) { Text($0.displayName()).tag($0) }
+                }
+                if !settings.languagesAreValid {
+                    Label("Elige dos idiomas distintos.", systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                        .font(.callout)
+                }
+            } header: {
+                Text("Idiomas")
+            } footer: {
+                Footnote("El borrador va de tu idioma al de destino. Al traducir una selección, lo que esté en tu idioma va al de destino y el resto, a tu idioma.")
+            }
+
             Section {
                 Picker("Motor", selection: $settings.engine) {
                     ForEach(EngineKind.allCases) { Text($0.title).tag($0) }
@@ -196,7 +216,7 @@ struct TranslationSettingsTab: View {
                         ForEach(TranslationTone.allCases) { Text($0.title).tag($0) }
                     }
                     TextField("No traducir", text: $settings.glossaryText, prompt: Text("PR, deploy, staging…"))
-                    TextField("Instrucciones extra", text: $settings.extraInstructions, prompt: Text("Usa ortografía británica…"), axis: .vertical)
+                    TextField("Instrucciones extra", text: $settings.extraInstructions, prompt: Text("Llama «daily» a la reunión diaria…"), axis: .vertical)
                         .lineLimit(2...4)
                 } header: {
                     Text("Estilo")
@@ -206,7 +226,7 @@ struct TranslationSettingsTab: View {
             }
 
             Section {
-                LabeledContent("Español ↔ Inglés") {
+                LabeledContent(model.languagePairLabel) {
                     HStack(spacing: 8) {
                         Text(model.languageStatusText).foregroundStyle(.secondary)
                         Button("Gestionar…") { model.showLanguageSetup() }
@@ -219,7 +239,7 @@ struct TranslationSettingsTab: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: SettingsView.width, height: 690)
+        .frame(width: SettingsView.width, height: 700)
         .onChange(of: settings.ollamaURL) { Task { await model.refreshEngineStatus() } }
     }
 

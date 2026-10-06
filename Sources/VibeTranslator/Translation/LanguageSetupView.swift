@@ -11,16 +11,16 @@ struct LanguageSetupView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Idiomas de traducción").font(.title3.bold())
-            Text("VibeTranslator traduce en el propio Mac con el motor de Apple. Necesita descargar una vez los idiomas español e inglés; después funciona sin conexión.")
+            Text("Apple Translation traduce en el propio Mac y es el motor de respaldo. Necesita descargar una vez los idiomas que uses; después funciona sin conexión.")
                 .fixedSize(horizontal: false, vertical: true)
 
-            LabeledContent("Español → Inglés", value: model.languageStatusText)
+            LabeledContent(model.languagePairLabel, value: model.languageStatusText)
 
             HStack {
                 Button("Descargar idiomas") {
                     message = nil
                     if configuration == nil {
-                        configuration = TranslationSession.Configuration(source: AppModel.source, target: AppModel.target)
+                        configuration = TranslationSession.Configuration(source: model.draftSource, target: model.draftTarget)
                     } else {
                         configuration?.invalidate()
                     }

@@ -60,6 +60,19 @@ final class AppSettings {
         didSet { defaults.set(engine.rawValue, forKey: Keys.engine) }
     }
 
+    /// The language I write in, and the one drafts are translated into.
+    var nativeLanguage: TranslationLanguage {
+        didSet { defaults.set(nativeLanguage.id, forKey: Keys.nativeLanguage); onLanguagesChanged?() }
+    }
+
+    var targetLanguage: TranslationLanguage {
+        didSet { defaults.set(targetLanguage.id, forKey: Keys.targetLanguage); onLanguagesChanged?() }
+    }
+
+    @ObservationIgnored var onLanguagesChanged: (() -> Void)?
+
+    var languagesAreValid: Bool { !nativeLanguage.isSameLanguage(as: targetLanguage) }
+
     /// Apps where "translate draft" may act (all of them unless the user picks some).
     var appScope: AppScope {
         didSet { defaults.set(try? JSONEncoder().encode(appScope), forKey: Keys.appScope) }
@@ -106,6 +119,8 @@ final class AppSettings {
         promptToEnglish = defaults.object(forKey: Keys.promptToEnglish) as? Bool ?? true
         accessMode = defaults.string(forKey: Keys.accessMode).flatMap(AccessMode.init(rawValue:)) ?? .automatic
         engine = defaults.string(forKey: Keys.engine).flatMap(EngineKind.init(rawValue:)) ?? .appleIntelligence
+        nativeLanguage = defaults.string(forKey: Keys.nativeLanguage).map(TranslationLanguage.init) ?? .spanishSpain
+        targetLanguage = defaults.string(forKey: Keys.targetLanguage).map(TranslationLanguage.init) ?? .englishUS
         appScope = defaults.data(forKey: Keys.appScope).flatMap { try? JSONDecoder().decode(AppScope.self, from: $0) }
             ?? AppScope.migrated(onlyInDiscord: defaults.object(forKey: Keys.legacyOnlyInDiscord) as? Bool)
         tone = defaults.string(forKey: Keys.tone).flatMap(TranslationTone.init(rawValue:)) ?? .relaxedTechnical
@@ -140,6 +155,8 @@ final class AppSettings {
         static let accessMode = "accessMode"
         static let engine = "engine"
         static let appScope = "appScope"
+        static let nativeLanguage = "nativeLanguage"
+        static let targetLanguage = "targetLanguage"
         static let legacyOnlyInDiscord = "onlyInDiscord"
         static let tone = "tone"
         static let glossary = "glossary"

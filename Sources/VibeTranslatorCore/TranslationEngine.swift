@@ -20,9 +20,9 @@ public enum TranslationEngineError: LocalizedError, Equatable {
     public var errorDescription: String? {
         switch self {
         case .languagesNotInstalled:
-            "Faltan los idiomas español e inglés del traductor de Apple. Descárgalos desde el menú: Idiomas de traducción…"
+            "Faltan idiomas del traductor de Apple. Descárgalos en Ajustes › Traducción › Apple Translation."
         case .unsupportedLanguagePair:
-            "El motor de traducción no admite español → inglés."
+            "Apple Translation no admite este par de idiomas."
         case let .unavailable(reason):
             reason
         case let .resultCountMismatch(expected, got):

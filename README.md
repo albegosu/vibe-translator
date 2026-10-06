@@ -5,8 +5,8 @@
 <h1 align="center">VibeTranslator</h1>
 
 <p align="center">
-  Write in Spanish, send natural English: one keyboard shortcut translates your draft<br>
-  right in the message box, in Discord or any other app. It also turns rough requests into clear AI prompts.
+  Write in your language, send natural English (or any other language): one keyboard shortcut<br>
+  translates your draft right in the message box, in Discord or any other app. It also turns rough requests into clear AI prompts.
 </p>
 
 <p align="center">
@@ -34,6 +34,7 @@ It can also translate any text you select (English → Spanish or Spanish → En
 - **Translate your draft**: one global shortcut translates the whole draft in place, ready to send. Built for Discord, it works in any app (Slack, Teams, Mail…), or only in the apps you choose.
 - **Translate a selection**: select text anywhere (someone's message, a web page, a PDF) and get the translation in a floating panel next to the cursor, with **Copy** and, if the selection is editable, **Replace**. The language is detected automatically.
 - **Improve a prompt** *(experimental)*: turn a rough request, in Spanish or English, into a clear prompt in English for an AI assistant or coding agent. Small requests stay one or two sentences; larger ones get only the sections that help. Code blocks, file paths, `@mentions`, URLs, `{{variables}}` and XML tags are kept intact. Preview it, then **Replace** or **Copy**.
+- **Your languages**: pick the language you write in and the one to translate into, with regional variants (American or British English, Spain or neutral Latin American Spanish, Brazilian or European Portuguese…). Spanish → English by default.
 - **Natural, not literal**: by default an LLM translates with a tone profile ("relaxed technical" out of the box), a glossary of terms to keep, and your own instructions. Idioms and slang are rendered by meaning.
 - **Markup is preserved**: mentions (`<@id>`, `@user`, `@everyone`, `#channel`), emoji (Unicode, `:shortcode:`, `<:custom:id>`), links, inline code and code blocks, formatting (`**`, `||`, `~~`…), line prefixes (`>`, `-`, `#`, `-#`), line breaks and indentation.
 - **Safe replacement**: the draft is only replaced if the same app, window or channel, field and text are still there. If anything changed while translating, nothing is touched.
@@ -46,7 +47,7 @@ It can also translate any text you select (English → Spanish or Spanish → En
 - **macOS 26 or later** (uses `TranslationSession(installedSource:target:)`). Tested on macOS 27.
 - **Xcode 26+ / Swift 6.2+** to build from source.
 - **Accessibility permission**, needed to read the focused field and send ⌘A / ⌘C / ⌘V.
-- **Spanish and English language packs** for Apple Translation, downloaded once from the app. They are also the fallback engine.
+- **Language packs** for your two languages in Apple Translation, downloaded once from the app. It's also the fallback engine.
 - Optional: **Apple Intelligence** enabled, or **[Ollama](https://ollama.com)** with a model.
 
 ## Installation
@@ -82,7 +83,7 @@ CODESIGN_IDENTITY="VibeTranslator Dev" scripts/build-app.sh
 
 1. Open the app. A speech-bubble icon appears in the menu bar.
 2. Grant the Accessibility permission when macOS asks (or from the menu).
-3. Download the Spanish and English packs for Apple Translation: **Ajustes… › Traducción › Apple Translation › Gestionar…** (the menu also warns you while they're missing).
+3. Pick your languages in **Ajustes… › Traducción › Idiomas** and download their packs for Apple Translation in **Apple Translation › Gestionar…** (the menu also warns you while they're missing).
 4. Pick a translation engine in **Ajustes… › Traducción**. See [Translation engines](#translation-engines).
 5. In Discord or any other app, write a draft, keep the cursor in the message box and press `⌃⌥T`.
 
@@ -90,9 +91,9 @@ CODESIGN_IDENTITY="VibeTranslator Dev" scripts/build-app.sh
 
 | Shortcut (default) | Action |
 | --- | --- |
-| `⌃⌥T` | Translate the current draft (Spanish → English) in place |
+| `⌃⌥T` | Translate the current draft in place, from your language to the target one |
 | `⌃⌥Z` | Restore the original draft |
-| `⌃⌥Y` | Translate the selected text in a floating panel (direction detected automatically) |
+| `⌃⌥Y` | Translate the selected text in a floating panel: your language goes to the target, anything else to your language |
 | `⌃⌥P` | Improve the selected prompt, or the whole field, and preview it before replacing (experimental) |
 
 All shortcuts can be changed or removed in **Settings › General**, where you can also limit draft translation to a list of apps. Every action works in any app. Terminals (Claude Code and friends) never get their whole input translated, because pasting several lines into a shell runs them: select the text and use translate selection or improve prompt instead.
@@ -190,7 +191,7 @@ scripts/demo/                     Renders the README demo (Playwright + ffmpeg)
 
 ## Known limitations
 
-- Draft translation is Spanish → English only; selection translation detects the direction.
+- Apple Translation doesn't cover every language or variant (Catalan, for example); LLM engines do. Without the pair in Apple Translation there's no fallback if the LLM fails.
 - Improve prompt is experimental: the result depends on the model, so always read the preview before replacing.
 - Tone only applies to LLM engines; Apple Translation doesn't take instructions.
 - Replacing a selection has no "Restore original"; use ⌘Z in the app itself.

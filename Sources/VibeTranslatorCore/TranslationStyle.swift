@@ -84,13 +84,26 @@ public enum LLMPrompt {
         return text
     }
 
+    /// English name the model understands, with the variant when there is one:
+    /// "Spanish (Spain)", "English (United Kingdom)", "Chinese (Traditional)".
     static func languageName(_ language: Locale.Language) -> String {
-        switch language.languageCode?.identifier {
-        case "es": "Spanish (as written in Spain)"
-        case "en": "English"
-        case let code?: Locale(identifier: "en").localizedString(forLanguageCode: code) ?? code
-        case nil: "the requested language"
+        let english = Locale(identifier: "en")
+        guard let code = language.languageCode?.identifier else { return "the requested language" }
+        // Without this, models pick one country's Spanish (often voseo: "podés", "che").
+        if code == "es", language.region?.identifier == "419" {
+            return "neutral Latin American Spanish (use \"tú\", no voseo or country-specific slang)"
         }
+        var name = english.localizedString(forLanguageCode: code) ?? code
+        var details: [String] = []
+        // Foundation fills in the default script ("Latin"); it only tells variants apart for Chinese.
+        if code == "zh", let script = language.script?.identifier, let scriptName = english.localizedString(forScriptCode: script) {
+            details.append(scriptName.replacingOccurrences(of: " Han", with: ""))
+        }
+        if let region = language.region?.identifier, let regionName = english.localizedString(forRegionCode: region) {
+            details.append(regionName)
+        }
+        if !details.isEmpty { name += " (\(details.joined(separator: ", ")))" }
+        return name
     }
 
     public static func payload(_ lines: [String]) -> String {

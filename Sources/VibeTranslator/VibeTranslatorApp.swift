@@ -42,7 +42,7 @@ private struct MenuContent: View {
     @Environment(\.openSettings) private var openSettings
 
     var body: some View {
-        Button("Traducir borrador al inglés" + shortcutSuffix(model.settings.translateShortcut)) {
+        Button("Traducir borrador al \(model.settings.targetLanguage.languageName().lowercased())" + shortcutSuffix(model.settings.translateShortcut)) {
             Task { await model.translateDraft() }
         }
         .disabled(model.isBusy)
@@ -76,7 +76,7 @@ private struct MenuContent: View {
             }
         }
         if model.languageStatus != .installed {
-            Button("⚠︎ Idiomas español → inglés: \(model.languageStatusText.lowercased())…") {
+            Button("⚠︎ Idiomas de Apple Translation (\(model.languagePairLabel)): \(model.languageStatusText.lowercased())…") {
                 model.showLanguageSetup()
             }
         }
