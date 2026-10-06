@@ -227,6 +227,7 @@ final class AppModel {
 
             let direction = LanguageDirection.detect(selection.text)
             selectionPanel.state.onClose = { [weak self] in self?.selectionPanel.close() }
+            selectionPanel.onDismiss = { [app = target.app] in app.activate() }
             selectionPanel.show(directionLabel: "\(Self.languageLabel(direction.source)) → \(Self.languageLabel(direction.target))")
 
             let translator = makeTranslator(from: direction.source, to: direction.target)
@@ -257,6 +258,7 @@ final class AppModel {
             guard let self else { return }
             selectionPanel.close()
             Task {
+                try? await Task.sleep(for: .milliseconds(200))
                 do {
                     try await target.replaceSelection(selection, with: translation.text)
                     self.hud.show("Selección reemplazada por la traducción.", style: .success)
@@ -305,6 +307,7 @@ final class AppModel {
 
             let options = PromptOptions(profile: settings.promptProfile, toEnglish: settings.promptToEnglish, glossary: settings.style.glossary)
             selectionPanel.state.onClose = { [weak self] in self?.selectionPanel.close() }
+            selectionPanel.onDismiss = { [app = target.app] in app.activate() }
             selectionPanel.show(directionLabel: options.profile.title + (options.toEnglish ? " · en inglés" : ""), width: 560)
 
             let improver = makePromptImprover(options)
@@ -373,6 +376,7 @@ final class AppModel {
             guard let self else { return }
             selectionPanel.close()
             Task {
+                try? await Task.sleep(for: .milliseconds(200))
                 do {
                     switch source {
                     case let .selection(selection):

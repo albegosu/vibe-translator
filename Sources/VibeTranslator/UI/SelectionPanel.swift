@@ -21,14 +21,21 @@ final class SelectionPanelState {
     var onClose: () -> Void = {}
 }
 
-/// Floating translation next to the cursor. It never becomes key or activates the app,
-/// so the source app keeps its focus and selection (needed for "Reemplazar").
+/// Floating result next to the cursor. It takes the keyboard while open (↩ runs the main
+/// action, esc closes) so a stray Return never reaches the app underneath, e.g. sending a
+/// chat message, but it never activates our app: the source app stays frontmost and keeps
+/// its selection for "Reemplazar".
 @MainActor
 final class SelectionPanel {
     let state = SelectionPanelState()
+    /// Gives the keyboard back to the source app when the panel closes from the keyboard
+    /// or its buttons (not when the user clicked somewhere else).
+    var onDismiss: (() -> Void)?
     private var panel: NSPanel?
     private var monitors: [Any] = []
     private var activationObserver: NSObjectProtocol?
+    /// Near the bottom of the screen the panel grows upwards from its bottom edge.
+    private var growsUp = false
 
     var isVisible: Bool { panel?.isVisible == true }
 
@@ -44,62 +51,73 @@ final class SelectionPanel {
         let host = FirstMouseHostingView(rootView: SelectionPanelView(state: state))
         panel.contentView = host
         place(panel, size: host.fittingSize)
-        panel.orderFrontRegardless()
+        panel.makeKeyAndOrderFront(nil)
         startDismissMonitors()
     }
 
-    /// Re-fits the panel after the content changes, keeping its top-left corner in place.
+    /// Re-fits the panel after the content changes, keeping the edge next to the cursor in
+    /// place and the whole panel on screen.
     func refit() {
         guard let panel, let host = panel.contentView else { return }
         host.layoutSubtreeIfNeeded()
         let size = host.fittingSize
-        let top = panel.frame.maxY
-        panel.setFrame(NSRect(x: panel.frame.minX, y: top - size.height, width: size.width, height: size.height), display: true)
+        let y = growsUp ? panel.frame.minY : panel.frame.maxY - size.height
+        panel.setFrame(clamped(NSRect(x: panel.frame.minX, y: y, width: size.width, height: size.height)), display: true)
     }
 
-    func close() {
-        panel?.orderOut(nil)
+    func close(returnFocus: Bool = true) {
+        guard let panel, panel.isVisible else { return }
+        panel.orderOut(nil)
         monitors.forEach(NSEvent.removeMonitor)
         monitors = []
         if let activationObserver {
             NSWorkspace.shared.notificationCenter.removeObserver(activationObserver)
         }
         activationObserver = nil
+        if returnFocus { onDismiss?() }
+        onDismiss = nil
     }
 
     private func place(_ panel: NSPanel, size: NSSize) {
         let mouse = NSEvent.mouseLocation
-        let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main
-        let visible = screen?.visibleFrame ?? NSRect(origin: .zero, size: size)
-        var origin = NSPoint(x: mouse.x + 12, y: mouse.y - 16 - size.height)
-        origin.x = min(max(origin.x, visible.minX + 8), visible.maxX - size.width - 8)
-        if origin.y < visible.minY + 8 { origin.y = mouse.y + 16 }
-        panel.setFrame(NSRect(origin: origin, size: size), display: true)
+        let visible = visibleFrame(at: mouse)
+        // Prompt boxes usually sit at the bottom of a window: grow away from the edge.
+        growsUp = mouse.y < visible.midY
+        let y = growsUp ? mouse.y + 16 : mouse.y - 16 - size.height
+        panel.setFrame(clamped(NSRect(x: mouse.x + 12, y: y, width: size.width, height: size.height)), display: true)
+    }
+
+    private func clamped(_ frame: NSRect) -> NSRect {
+        let visible = visibleFrame(at: NSPoint(x: frame.midX, y: frame.midY))
+        var frame = frame
+        frame.origin.x = min(max(frame.minX, visible.minX + 8), visible.maxX - frame.width - 8)
+        frame.origin.y = min(max(frame.minY, visible.minY + 8), visible.maxY - frame.height - 8)
+        return frame
+    }
+
+    private func visibleFrame(at point: NSPoint) -> NSRect {
+        let screen = NSScreen.screens.first { NSMouseInRect(point, $0.frame, false) } ?? NSScreen.main
+        return screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
     }
 
     private func startDismissMonitors() {
         guard monitors.isEmpty else { return }
-        // Clicks in other apps or Esc close it; clicks in the panel itself never reach a global monitor.
+        // A click in another app closes it (clicks in the panel never reach a global monitor);
+        // that click already decides where the focus goes, so don't hand it back.
         if let mouse = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown], handler: { [weak self] _ in
-            MainActor.assumeIsolated { self?.state.onClose() }
+            MainActor.assumeIsolated { self?.close(returnFocus: false) }
         }) {
             monitors.append(mouse)
-        }
-        if let keys = NSEvent.addGlobalMonitorForEvents(matching: .keyDown, handler: { [weak self] event in
-            guard event.keyCode == 53 else { return } // Esc
-            MainActor.assumeIsolated { self?.state.onClose() }
-        }) {
-            monitors.append(keys)
         }
         activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.state.onClose() }
+            MainActor.assumeIsolated { self?.close(returnFocus: false) }
         }
     }
 
     private func makePanel() -> NSPanel {
-        let panel = NonKeyPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        let panel = KeyPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = false
@@ -110,13 +128,13 @@ final class SelectionPanel {
     }
 }
 
-/// Keyboard focus must stay in the source app, or ⌘V for "Reemplazar" would land here.
-private final class NonKeyPanel: NSPanel {
-    override var canBecomeKey: Bool { false }
+/// Borderless panels can't become key by default; this one must, to catch ↩ and esc.
+private final class KeyPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 }
 
-/// Buttons react to the first click even though the panel is never key.
+/// Buttons react to the first click without a focus click first.
 private final class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }
@@ -133,7 +151,8 @@ private struct SelectionPanelView: View {
                     Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
-                .help("Cerrar (Esc)")
+                .keyboardShortcut(.cancelAction)
+                .help("Cerrar (esc)")
             }
 
             switch state.phase {
@@ -155,12 +174,21 @@ private struct SelectionPanelView: View {
                     Text(note).font(.caption).foregroundStyle(.secondary)
                 }
                 HStack {
+                    Text("↩ \(state.canReplace ? "reemplazar" : "copiar") · esc cerrar")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
                     Spacer()
                     if state.canReplace {
+                        Button("Copiar", action: state.onCopy)
+                            .keyboardShortcut("c", modifiers: .command)
                         Button("Reemplazar", action: state.onReplace)
+                            .buttonStyle(.borderedProminent)
+                            .keyboardShortcut(.defaultAction)
+                    } else {
+                        Button("Copiar", action: state.onCopy)
+                            .buttonStyle(.borderedProminent)
+                            .keyboardShortcut(.defaultAction)
                     }
-                    Button("Copiar", action: state.onCopy)
-                        .buttonStyle(.borderedProminent)
                 }
             case let .failed(message):
                 Label(message, systemImage: "exclamationmark.triangle.fill")
