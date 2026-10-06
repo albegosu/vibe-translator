@@ -23,9 +23,11 @@ public enum PromptProfile: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .agentTask:
             """
-            The prompt is a task for an AI coding agent. Use short Markdown sections, omitting any that would be empty: \
-            "## Goal" (one or two sentences), "## Context" (what the author said about the current situation), \
-            "## Requirements" (bullet list of what must be done or respected), "## Done when" (bullet list of checks).
+            The prompt is a task for an AI coding agent. Match the structure to the size of the request:
+            - Small request (one or two things to do): one or two clear sentences, optionally followed by a few bullets \
+            with constraints. No headings.
+            - Larger request (several steps, constraints or context): short Markdown sections, only the ones that add \
+            information, from "## Goal", "## Context", "## Requirements" and "## Done when".
             """
         case .concise:
             "The prompt is a question or request for an AI assistant. Write one or two short, direct paragraphs; no headings."
@@ -51,8 +53,11 @@ public struct PromptOptions: Equatable, Sendable {
             "Do not answer the request or start doing it: no solutions, no code, no explanations. Only rewrite the request.",
             "Tokens such as ⟦0⟧ or ⟦1⟧ stand for code, file paths, @mentions, URLs, variables or tags. Keep every token; you may repeat one when you refer to the same thing again.",
             "Only code blocks appear as a token alone on its own line in the input; keep each of those on its own line (for example at the end of the Context section). Every other token (paths, names, links) belongs inside a sentence: never put it alone on a line or in a list of its own.",
-            "Be concise: no role-play preambles (\"You are an expert…\"), no filler, no generic advice.",
-            "If something essential is clearly missing, end with a short \"## Open questions\" list instead of guessing.",
+            "Make it clearer, not longer: remove filler and repetition, and add structure only where it helps. The result should rarely be more than twice as long as the request.",
+            "Say each thing once; never repeat the same point in two places.",
+            "Use precise wording: pick one term instead of alternatives joined by slashes.",
+            "No role-play preambles (\"You are an expert…\") and no generic advice.",
+            "Only if the agent truly cannot proceed without some information, end with a short \"Open questions\" list instead of guessing.",
             #"Return JSON: {"prompt": "<the rewritten prompt>"}."#,
         ]
         if !glossary.isEmpty {
@@ -143,16 +148,33 @@ public enum PromptMarkup {
 
         let restored = NSMutableString(string: text)
         for (match, index) in zip(matches, indices).reversed() {
-            var replacement = spans[index]
-            if replacement.contains("\n") {
-                let before = match.range.location == 0 ? "\n" : restored.substring(with: NSRange(location: match.range.location - 1, length: 1))
-                let afterLocation = NSMaxRange(match.range)
-                let after = afterLocation >= restored.length ? "\n" : restored.substring(with: NSRange(location: afterLocation, length: 1))
-                replacement = (before == "\n" ? "" : "\n") + replacement + (after == "\n" ? "" : "\n")
+            let span = spans[index]
+            if span.contains("\n") {
+                let (range, replacement) = blockPlacement(span, at: match.range, in: restored)
+                restored.replaceCharacters(in: range, with: replacement)
+            } else {
+                restored.replaceCharacters(in: match.range, with: span)
             }
-            restored.replaceCharacters(in: match.range, with: replacement)
         }
         return restored as String
+    }
+
+    /// Models sometimes put a code block mid-sentence ("the bug is in ⟦2⟧."). Close the
+    /// sentence with a colon, drop the stray punctuation after it and give the block its own lines.
+    private static func blockPlacement(_ block: String, at token: NSRange, in text: NSMutableString) -> (NSRange, String) {
+        func char(_ index: Int) -> Character { Character(text.substring(with: NSRange(location: index, length: 1))) }
+        var start = token.location
+        while start > 0, char(start - 1) == " " || char(start - 1) == "\t" { start -= 1 }
+        var end = NSMaxRange(token)
+        if end < text.length, ".,;".contains(char(end)) { end += 1 }
+        while end < text.length, char(end) == " " || char(end) == "\t" { end += 1 }
+
+        var prefix = ""
+        if start > 0, char(start - 1) != "\n" {
+            prefix = (char(start - 1).isLetter || char(start - 1).isNumber ? ":" : "") + "\n"
+        }
+        let suffix = end < text.length && char(end) != "\n" ? "\n" : ""
+        return (NSRange(location: start, length: end - start), prefix + block + suffix)
     }
 }
 

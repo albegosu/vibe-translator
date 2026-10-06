@@ -50,7 +50,9 @@ struct PromptMarkupTests {
 
     @Test func codeBlocksAppearOnceAndOnTheirOwnLines() throws {
         let spans = ["```swift\nlet x = 1\n```"]
-        #expect(try PromptMarkup.unmask("The test in ⟦0⟧ fails.", spans: spans) == "The test in \n```swift\nlet x = 1\n```\n fails.")
+        #expect(try PromptMarkup.unmask("The bug is likely in ⟦0⟧.", spans: spans) == "The bug is likely in:\n```swift\nlet x = 1\n```")
+        #expect(try PromptMarkup.unmask("The test in ⟦0⟧ fails often.", spans: spans) == "The test in:\n```swift\nlet x = 1\n```\nfails often.")
+        #expect(try PromptMarkup.unmask("This code:⟦0⟧", spans: spans) == "This code:\n```swift\nlet x = 1\n```")
         #expect(try PromptMarkup.unmask("Context:\n⟦0⟧\nDone", spans: spans) == "Context:\n```swift\nlet x = 1\n```\nDone")
         #expect(throws: PromptImproveError.placeholdersLost) { try PromptMarkup.unmask("⟦0⟧\n⟦0⟧", spans: spans) }
     }
