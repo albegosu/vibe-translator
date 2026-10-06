@@ -16,13 +16,14 @@ public enum TranslationEngineError: LocalizedError, Equatable {
     case invalidResponse
     case implausibleOutput
     case timedOut
+    case leakedPlaceholders
 
     public var errorDescription: String? {
         switch self {
         case .languagesNotInstalled:
-            "Faltan los idiomas español e inglés del traductor de Apple. Descárgalos desde el menú: Idiomas de traducción…"
+            "Faltan idiomas del traductor de Apple. Descárgalos en Ajustes › Traducción › Apple Translation."
         case .unsupportedLanguagePair:
-            "El motor de traducción no admite español → inglés."
+            "Apple Translation no admite este par de idiomas."
         case let .unavailable(reason):
             reason
         case let .resultCountMismatch(expected, got):
@@ -33,6 +34,8 @@ public enum TranslationEngineError: LocalizedError, Equatable {
             "El motor devolvió algo que no parece una traducción."
         case .timedOut:
             "La traducción ha tardado demasiado."
+        case .leakedPlaceholders:
+            "La traducción traía marcadores internos y no se ha aplicado. Vuelve a intentarlo."
         }
     }
 }

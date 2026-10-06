@@ -14,7 +14,8 @@ final class AppleTranslationEngine: TranslationEngine, @unchecked Sendable {
     func translate(_ texts: [String], from source: Locale.Language, to target: Locale.Language) async throws -> [String] {
         guard !texts.isEmpty else { return [] }
 
-        switch await LanguageAvailability().status(from: source, to: target) {
+        let (source, target, status) = await Self.resolve(from: source, to: target)
+        switch status {
         case .installed: break
         case .supported: throw TranslationEngineError.languagesNotInstalled
         case .unsupported: throw TranslationEngineError.unsupportedLanguagePair
@@ -64,6 +65,18 @@ final class AppleTranslationEngine: TranslationEngine, @unchecked Sendable {
     }
 
     static func availability(from source: Locale.Language, to target: Locale.Language) async -> LanguageAvailability.Status {
-        await LanguageAvailability().status(from: source, to: target)
+        await resolve(from: source, to: target).status
+    }
+
+    /// Apple Translation doesn't know every regional variant ("es-419"): fall back to the
+    /// base languages when the exact pair isn't supported.
+    private static func resolve(from source: Locale.Language, to target: Locale.Language) async -> (source: Locale.Language, target: Locale.Language, status: LanguageAvailability.Status) {
+        let availability = LanguageAvailability()
+        let exact = await availability.status(from: source, to: target)
+        guard exact == .unsupported,
+              let sourceCode = source.languageCode, let targetCode = target.languageCode else { return (source, target, exact) }
+        let baseSource = Locale.Language(languageCode: sourceCode)
+        let baseTarget = Locale.Language(languageCode: targetCode)
+        return (baseSource, baseTarget, await availability.status(from: baseSource, to: baseTarget))
     }
 }

@@ -24,6 +24,7 @@ enum AppError: LocalizedError {
     case selectPromptInTerminal
     case promptTooLong
     case draftInTerminal
+    case sameLanguages
     case draftTooLong
 
     var errorDescription: String? {
@@ -46,6 +47,8 @@ enum AppError: LocalizedError {
             "En la terminal, selecciona primero el texto del prompt."
         case .promptTooLong:
             "El campo es demasiado largo para ser un prompt. Selecciona la parte que quieres mejorar."
+        case .sameLanguages:
+            "«Mi idioma» y «Traducir a» son el mismo idioma. Cámbialos en Ajustes › Traducción."
         case .draftInTerminal:
             "En la terminal no se traduce el borrador entero. Selecciona el texto y usa «Traducir selección» o «Mejorar prompt»."
         case .draftTooLong:
@@ -59,8 +62,13 @@ enum AppError: LocalizedError {
 final class AppModel {
     static let shared = AppModel()
 
-    static let source = Locale.Language(identifier: "es")
-    static let target = Locale.Language(identifier: "en")
+    /// Draft direction: my language → the target language.
+    var draftSource: Locale.Language { settings.nativeLanguage.language }
+    var draftTarget: Locale.Language { settings.targetLanguage.language }
+
+    var languagePairLabel: String {
+        "\(settings.nativeLanguage.languageName()) → \(settings.targetLanguage.languageName())"
+    }
 
     let settings = AppSettings()
     private(set) var isBusy = false
@@ -83,7 +91,7 @@ final class AppModel {
     @ObservationIgnored private let log = Logger(subsystem: "io.github.albegosu.VibeTranslator", category: "app")
 
     /// The chosen engine first, then Apple Translation as the safety net.
-    private func makeTranslator(from source: Locale.Language = AppModel.source, to target: Locale.Language = AppModel.target) -> DraftTranslator {
+    private func makeTranslator(from source: Locale.Language? = nil, to target: Locale.Language? = nil) -> DraftTranslator {
         var engines: [any TranslationEngine] = []
         switch settings.engine {
         case .appleIntelligence:
@@ -94,7 +102,7 @@ final class AppModel {
             break
         }
         engines.append(appleTranslation)
-        return DraftTranslator(engines: engines, source: source, target: target, engineTimeout: .seconds(20))
+        return DraftTranslator(engines: engines, source: source ?? draftSource, target: target ?? draftTarget, engineTimeout: .seconds(20))
     }
 
     func start() {
@@ -111,6 +119,9 @@ final class AppModel {
         }
         hotKeys.install()
         settings.onShortcutsChanged = { [weak self] in self?.registerHotKeys() }
+        settings.onLanguagesChanged = { [weak self] in
+            Task { await self?.refreshLanguageStatus() }
+        }
         registerHotKeys()
 
         if !isTrusted {
@@ -137,6 +148,7 @@ final class AppModel {
         var snapshot: DraftSnapshot?
         var pending: LastTranslation?
         do {
+            guard settings.languagesAreValid else { throw AppError.sameLanguages }
             let target = try prepareAccessor()
             accessor = target
             await KeyboardSimulator.waitForModifierRelease()
@@ -233,7 +245,7 @@ final class AppModel {
             await KeyboardSimulator.waitForModifierRelease()
             let selection = try await target.captureSelection()
 
-            let direction = LanguageDirection.detect(selection.text)
+            let direction = LanguageDirection.detect(selection.text, native: settings.nativeLanguage, target: settings.targetLanguage)
             selectionPanel.state.onClose = { [weak self] in self?.selectionPanel.close() }
             selectionPanel.onDismiss = { [app = target.app] in app.activate() }
             selectionPanel.show(directionLabel: "\(Self.languageLabel(direction.source)) → \(Self.languageLabel(direction.target))")
@@ -353,7 +365,10 @@ final class AppModel {
         case .appleTranslation:
             break
         }
-        let fallback = DraftTranslator(engines: [appleTranslation], source: Self.source, target: Self.target, engineTimeout: .seconds(20))
+        // Prompts are written in English; translating from my language is the fallback.
+        let english = TranslationLanguage.englishUS
+        let fallback = settings.nativeLanguage.isSameLanguage(as: english) ? nil
+            : DraftTranslator(engines: [appleTranslation], source: draftSource, target: english.language, engineTimeout: .seconds(20))
         return PromptImprover(rewriters: rewriters, fallback: fallback, options: options, timeout: .seconds(45))
     }
 
@@ -404,7 +419,7 @@ final class AppModel {
 
     private static func languageLabel(_ language: Locale.Language) -> String {
         guard let code = language.languageCode?.identifier else { return "?" }
-        return Locale(identifier: "es").localizedString(forLanguageCode: code)?.capitalized ?? code
+        return TranslationLanguage(code).languageName()
     }
 
     func copyOriginal() {
@@ -450,7 +465,7 @@ final class AppModel {
     }
 
     func refreshLanguageStatus() async {
-        languageStatus = await AppleTranslationEngine.availability(from: Self.source, to: Self.target)
+        languageStatus = await AppleTranslationEngine.availability(from: draftSource, to: draftTarget)
     }
 
     var languageStatusText: String {

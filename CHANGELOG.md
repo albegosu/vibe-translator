@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Language settings (Settings › Traducción › Idiomas): the language you write in and the one to translate into, with regional variants (American/British English, Spain/neutral Latin American/Mexican/Argentinian Spanish, Brazilian/European Portuguese and more). Spanish → English stays the default.
+- Translate selection follows your languages: your language goes to the target, anything else comes to your language.
+
+### Changed
+
+- The LLM gets the exact variant ("English (United Kingdom)", neutral Latin American Spanish).
+- Apple Translation falls back to the base language when it doesn't know a regional variant.
+- Language detection trusts a confident guess first and only biases short, ambiguous text towards your two languages.
+
+### Fixed
+
+- A placeholder such as `{0}` could leak into the translation ("Hey {0}, …") when a line fell back to fragment-by-fragment translation and the model invented one. Invented tokens are now removed, and a translation that still carries one is never written.
+
 ## [0.3.0] - 2026-10-06
 
 ### Added

@@ -149,6 +149,9 @@ struct LeadingCaseTests {
 }
 
 struct LanguageDirectionTests {
+    private let spanish = TranslationLanguage.spanishSpain
+    private let english = TranslationLanguage.englishUS
+
     @Test(arguments: [
         ("Hey <@123456789012345678>, did you check the PR? It's still failing in CI", "en", "es"),
         ("Oye, ¿has mirado el PR? Sigue fallando en CI", "es", "en"),
@@ -156,12 +159,59 @@ struct LanguageDirectionTests {
         ("lgtm, ship it once the tests pass", "en", "es"),
     ])
     func picksTheDirection(text: String, source: String, target: String) {
-        let direction = LanguageDirection.detect(text)
+        let direction = LanguageDirection.detect(text, native: spanish, target: english)
         #expect(direction.source.languageCode?.identifier == source)
         #expect(direction.target.languageCode?.identifier == target)
     }
 
-    @Test func unknownTextDefaultsToSpanishTarget() {
-        #expect(LanguageDirection.detect("👍 <@123456789012345678>").target.languageCode?.identifier == "es")
+    @Test func otherPairsWork() {
+        let french = TranslationLanguage("fr-FR")
+        let toEnglish = LanguageDirection.detect("Salut, tu peux regarder la PR quand tu as un moment ?", native: french, target: english)
+        #expect(toEnglish.source.languageCode?.identifier == "fr")
+        #expect(toEnglish.target.languageCode?.identifier == "en")
+        let toFrench = LanguageDirection.detect("Can you take a look at the PR when you get a sec?", native: french, target: english)
+        #expect(toFrench.target.languageCode?.identifier == "fr")
+    }
+
+    @Test func aThirdLanguageComesToMine() {
+        let direction = LanguageDirection.detect("Kannst du dir den Pull Request heute noch ansehen?", native: spanish, target: english)
+        #expect(direction.source.languageCode?.identifier == "de")
+        #expect(direction.target.languageCode?.identifier == "es")
+    }
+
+    @Test(arguments: [("vale", "es"), ("ok", "en")])
+    func shortTextIsDecidedBetweenMyTwoLanguages(text: String, source: String) {
+        #expect(LanguageDirection.detect(text, native: spanish, target: english).source.languageCode?.identifier == source)
+    }
+
+    @Test func unknownTextComesToMyLanguage() {
+        #expect(LanguageDirection.detect("👍 <@123456789012345678>", native: spanish, target: english).target.languageCode?.identifier == "es")
+    }
+}
+
+struct TranslationLanguageTests {
+    @Test(arguments: [
+        ("es-ES", "Spanish (Spain)"),
+        ("es-419", "neutral Latin American Spanish (use \"tú\", no voseo or country-specific slang)"),
+        ("es-AR", "Spanish (Argentina)"),
+        ("en-GB", "English (United Kingdom)"),
+        ("pt-BR", "Portuguese (Brazil)"),
+        ("zh-Hant", "Chinese (Traditional)"),
+        ("ar", "Arabic"),
+    ])
+    func promptNamesIncludeTheVariant(id: String, expected: String) {
+        #expect(LLMPrompt.languageName(Locale.Language(identifier: id)) == expected)
+    }
+
+    @Test func displayNamesAreCapitalised() {
+        #expect(TranslationLanguage("es-ES").displayName(in: Locale(identifier: "es")) == "Español (España)")
+        #expect(TranslationLanguage("en-GB").displayName(in: Locale(identifier: "en")) == "English (United Kingdom)")
+    }
+
+    @Test func catalogHasTheDefaultsAndNoDuplicates() {
+        let ids = TranslationLanguage.catalog.map(\.id)
+        #expect(ids.contains("es-ES") && ids.contains("en-US"))
+        #expect(Set(ids).count == ids.count)
+        #expect(TranslationLanguage("es-419").isSameLanguage(as: .spanishSpain))
     }
 }
