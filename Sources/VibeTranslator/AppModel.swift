@@ -30,29 +30,29 @@ enum AppError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .accessibilityDenied:
-            "VibeTranslator necesita permiso de Accesibilidad (Ajustes del Sistema › Privacidad y seguridad › Accesibilidad)."
+            String(localized: "VibeTranslator necesita permiso de Accesibilidad (Ajustes del Sistema › Privacidad y seguridad › Accesibilidad).")
         case .noFrontmostApp:
-            "No hay ninguna app activa."
+            String(localized: "No hay ninguna app activa.")
         case let .appNotAllowed(name):
-            "Has limitado la traducción del borrador a otras apps y \(name) no está en la lista. Puedes cambiarlo en Ajustes › General."
+            String(localized: "Has limitado la traducción del borrador a otras apps y \(name) no está en la lista. Puedes cambiarlo en Ajustes › General.")
         case .emptyDraft:
-            "El borrador está vacío o no tiene texto que traducir."
+            String(localized: "El borrador está vacío o no tiene texto que traducir.")
         case .nothingChanged:
-            "La traducción es idéntica al borrador; no se ha cambiado nada."
+            String(localized: "La traducción es idéntica al borrador; no se ha cambiado nada.")
         case .nothingToRestore:
-            "No hay ninguna traducción que deshacer."
+            String(localized: "No hay ninguna traducción que deshacer.")
         case .restoreMismatch:
-            "Has editado el borrador después de traducirlo, así que no se sobrescribe. Usa «Copiar original» en el menú."
+            String(localized: "Has editado el borrador después de traducirlo, así que no se sobrescribe. Usa «Copiar original» en el menú.")
         case .selectPromptInTerminal:
-            "En la terminal, selecciona primero el texto del prompt."
+            String(localized: "En la terminal, selecciona primero el texto del prompt.")
         case .promptTooLong:
-            "El campo es demasiado largo para ser un prompt. Selecciona la parte que quieres mejorar."
+            String(localized: "El campo es demasiado largo para ser un prompt. Selecciona la parte que quieres mejorar.")
         case .sameLanguages:
-            "«Mi idioma» y «Traducir a» son el mismo idioma. Cámbialos en Ajustes › Traducción."
+            String(localized: "«Mi idioma» y «Traducir a» son el mismo idioma. Cámbialos en Ajustes › Traducción.")
         case .draftInTerminal:
-            "En la terminal no se traduce el borrador entero. Selecciona el texto y usa «Traducir selección» o «Mejorar prompt»."
+            String(localized: "En la terminal no se traduce el borrador entero. Selecciona el texto y usa «Traducir selección» o «Mejorar prompt».")
         case .draftTooLong:
-            "El texto es demasiado largo para un borrador (más de 4.000 caracteres). Selecciona la parte que quieres y usa «Traducir selección»."
+            String(localized: "El texto es demasiado largo para un borrador (más de 4.000 caracteres). Selecciona la parte que quieres y usa «Traducir selección».")
         }
     }
 }
@@ -67,7 +67,7 @@ final class AppModel {
     var draftTarget: Locale.Language { settings.targetLanguage.language }
 
     var languagePairLabel: String {
-        "\(settings.nativeLanguage.languageName()) → \(settings.targetLanguage.languageName())"
+        "\(settings.nativeLanguage.languageName(in: .ui)) → \(settings.targetLanguage.languageName(in: .ui))"
     }
 
     let settings = AppSettings()
@@ -79,6 +79,7 @@ final class AppModel {
     private(set) var diagnosticsReport: String?
     private(set) var diagnosticsFile: URL?
     private(set) var appleIntelligenceStatus = AppleIntelligenceEngine.statusText
+    private(set) var appleIntelligenceAvailable = AppleIntelligenceEngine.isAvailable
     private(set) var ollamaModels: [OllamaModel] = []
     private(set) var ollamaStatus: String?
 
@@ -138,7 +139,7 @@ final class AppModel {
 
     func translateDraft() async {
         guard !isBusy else {
-            hud.show("Ya hay una traducción en curso.", style: .info)
+            hud.show(String(localized: "Ya hay una traducción en curso."), style: .info)
             return
         }
         isBusy = true
@@ -159,7 +160,7 @@ final class AppModel {
             // ⌘A in a code editor selects the whole file: that's not a draft.
             guard captured.text.count <= 4_000 else { throw AppError.draftTooLong }
 
-            hud.show("Traduciendo…", style: .progress)
+            hud.show(String(localized: "Traduciendo…"), style: .progress)
             let translator = makeTranslator()
             let source = captured.text
             let translation = try await withTimeout(.seconds(45)) { try await translator.translate(source) }
@@ -212,20 +213,20 @@ final class AppModel {
 
             try await target.replace(current, with: last.original)
             lastTranslation?.restored = true
-            hud.show("Texto original restaurado.", style: .success)
+            hud.show(String(localized: "Texto original restaurado."), style: .success)
         } catch {
             if let accessor, let snapshot { await accessor.deselectIfStillFrontmost(after: snapshot) }
-            fail(error, hint: "Puedes usar «Copiar original» en el menú.")
+            fail(error, hint: String(localized: "Puedes usar «Copiar original» en el menú."))
         }
     }
 
     private func showResult(of translation: DraftTranslation) {
-        let engine = translation.engineName ?? "el motor"
+        let engine = translation.engineName ?? String(localized: "el motor")
         guard let failure = translation.failures.first else {
-            hud.show("Traducido con \(engine). Revísalo y envíalo cuando quieras.", style: .success)
+            hud.show(String(localized: "Traducido con \(engine). Revísalo y envíalo cuando quieras."), style: .success)
             return
         }
-        hud.show("Traducido con \(engine): \(failure.engineName) falló (\(failure.message))", style: .info, duration: .seconds(5))
+        hud.show(String(localized: "Traducido con \(engine): \(failure.engineName) falló (\(failure.message))"), style: .info, duration: .seconds(5))
         Task { await refreshEngineStatus() }
     }
 
@@ -233,7 +234,7 @@ final class AppModel {
 
     func translateSelection() async {
         guard !isBusy else {
-            hud.show("Ya hay una traducción en curso.", style: .info)
+            hud.show(String(localized: "Ya hay una traducción en curso."), style: .info)
             return
         }
         isBusy = true
@@ -268,11 +269,11 @@ final class AppModel {
         let state = selectionPanel.state
         state.phase = .done(translation.text)
         state.canReplace = selection.isEditable
-        state.note = translation.failures.first.map { "Con \(translation.engineName ?? "el motor de respaldo"): \($0.engineName) falló." }
+        state.note = translation.failures.first.map { String(localized: "Con \(translation.engineName ?? String(localized: "el motor de respaldo")): \($0.engineName) falló.") }
         state.onCopy = { [weak self] in
             Clipboard.write(translation.text)
             self?.selectionPanel.close()
-            self?.hud.show("Traducción copiada.", style: .success)
+            self?.hud.show(String(localized: "Traducción copiada."), style: .success)
         }
         state.onReplace = { [weak self] in
             guard let self else { return }
@@ -281,7 +282,7 @@ final class AppModel {
                 try? await Task.sleep(for: .milliseconds(200))
                 do {
                     try await target.replaceSelection(selection, with: translation.text)
-                    self.hud.show("Selección reemplazada por la traducción.", style: .success)
+                    self.hud.show(String(localized: "Selección reemplazada por la traducción."), style: .success)
                 } catch {
                     self.fail(error)
                 }
@@ -307,7 +308,7 @@ final class AppModel {
 
     func improvePrompt() async {
         guard !isBusy else {
-            hud.show("Ya hay una traducción en curso.", style: .info)
+            hud.show(String(localized: "Ya hay una traducción en curso."), style: .info)
             return
         }
         isBusy = true
@@ -322,7 +323,7 @@ final class AppModel {
             let options = PromptOptions(profile: settings.promptProfile, toEnglish: settings.promptToEnglish, glossary: settings.style.glossary)
             selectionPanel.state.onClose = { [weak self] in self?.selectionPanel.close() }
             selectionPanel.onDismiss = { [app = target.app] in app.activate() }
-            selectionPanel.show(directionLabel: options.profile.title + (options.toEnglish ? " · en inglés" : ""), width: 560)
+            selectionPanel.show(directionLabel: options.profile.title + (options.toEnglish ? String(localized: " · en inglés") : ""), width: 560)
 
             let improver = makePromptImprover(options)
             let text = source.text
@@ -380,14 +381,15 @@ final class AppModel {
             return true
         }()
         if result.translatedOnly {
-            state.note = "Solo traducido con \(result.engineName): \(result.failures.first?.message ?? "no hay motor LLM").".replacingOccurrences(of: "..", with: ".")
+            let reason = result.failures.first?.message ?? String(localized: "no hay motor LLM")
+            state.note = String(localized: "Solo traducido con \(result.engineName): \(reason)")
         } else {
-            state.note = result.failures.first.map { "Con \(result.engineName): \($0.engineName) falló." }
+            state.note = result.failures.first.map { String(localized: "Con \(result.engineName): \($0.engineName) falló.") }
         }
         state.onCopy = { [weak self] in
             Clipboard.write(result.text)
             self?.selectionPanel.close()
-            self?.hud.show("Prompt copiado.", style: .success)
+            self?.hud.show(String(localized: "Prompt copiado."), style: .success)
         }
         state.onReplace = { [weak self] in
             guard let self else { return }
@@ -408,7 +410,7 @@ final class AppModel {
                             method: field.method
                         )
                     }
-                    self.hud.show("Prompt reemplazado.", style: .success)
+                    self.hud.show(String(localized: "Prompt reemplazado."), style: .success)
                 } catch {
                     self.fail(error)
                 }
@@ -419,13 +421,13 @@ final class AppModel {
 
     private static func languageLabel(_ language: Locale.Language) -> String {
         guard let code = language.languageCode?.identifier else { return "?" }
-        return TranslationLanguage(code).languageName()
+        return TranslationLanguage(code).languageName(in: .ui)
     }
 
     func copyOriginal() {
         guard let last = lastTranslation else { return }
         Clipboard.write(last.original)
-        hud.show("Texto original copiado al portapapeles.", style: .success)
+        hud.show(String(localized: "Texto original copiado al portapapeles."), style: .success)
     }
 
     // MARK: Diagnostics
@@ -436,25 +438,26 @@ final class AppModel {
         defer { isBusy = false }
 
         for remaining in stride(from: 3, through: 1, by: -1) {
-            hud.show("Diagnóstico en \(remaining) s: deja el cursor en el cuadro de mensaje de Discord.", style: .progress)
+            hud.show(String(localized: "Diagnóstico en \(remaining) s: deja el cursor en el cuadro de mensaje de Discord."), style: .progress)
             try? await Task.sleep(for: .seconds(1))
         }
-        hud.show("Analizando el campo activo…", style: .progress)
+        hud.show(String(localized: "Analizando el campo activo…"), style: .progress)
         let report = await Diagnostics.run(writeTest: writeTest, settings: settings)
         hud.hide()
 
         diagnosticsReport = report
         diagnosticsFile = Diagnostics.save(report)
-        windows.show(id: "diagnostics", title: "Diagnóstico de VibeTranslator") { DiagnosticsView(model: self) }
+        windows.show(id: "diagnostics", title: String(localized: "Diagnóstico de VibeTranslator")) { DiagnosticsView(model: self) }
     }
 
     // MARK: Permissions, languages, hot keys
 
     func refreshEngineStatus() async {
         appleIntelligenceStatus = AppleIntelligenceEngine.statusText
+        appleIntelligenceAvailable = AppleIntelligenceEngine.isAvailable
         do {
             ollamaModels = try await OllamaEngine.installedModels(baseURL: settings.ollamaBaseURL)
-            ollamaStatus = ollamaModels.isEmpty ? "Ollama está en marcha pero no tiene modelos descargados." : nil
+            ollamaStatus = ollamaModels.isEmpty ? String(localized: "Ollama está en marcha pero no tiene modelos descargados.") : nil
             if settings.ollamaModel.isEmpty, let local = ollamaModels.first(where: { !$0.isCloud }) {
                 settings.ollamaModel = local.name
             }
@@ -470,11 +473,11 @@ final class AppModel {
 
     var languageStatusText: String {
         switch languageStatus {
-        case .installed: "Instalados"
-        case .supported: "Pendientes de descarga"
-        case .unsupported: "No disponibles"
-        case nil: "Comprobando…"
-        @unknown default: "Desconocido"
+        case .installed: String(localized: "Instalados")
+        case .supported: String(localized: "Pendientes de descarga")
+        case .unsupported: String(localized: "No disponibles")
+        case nil: String(localized: "Comprobando…")
+        @unknown default: String(localized: "Desconocido")
         }
     }
 
@@ -491,24 +494,24 @@ final class AppModel {
     }
 
     func showLanguageSetup() {
-        windows.show(id: "languages", title: "Idiomas de traducción") { LanguageSetupView(model: self) }
+        windows.show(id: "languages", title: String(localized: "Idiomas de traducción")) { LanguageSetupView(model: self) }
     }
 
     private func registerHotKeys() {
         var failed: [String] = []
         if !hotKeys.register(settings.translateShortcut, for: .translate) {
-            failed.append("traducir (\(settings.translateShortcut?.displayString ?? ""))")
+            failed.append(String(localized: "traducir (\(settings.translateShortcut?.displayString ?? ""))"))
         }
         if !hotKeys.register(settings.restoreShortcut, for: .restore) {
-            failed.append("restaurar (\(settings.restoreShortcut?.displayString ?? ""))")
+            failed.append(String(localized: "restaurar (\(settings.restoreShortcut?.displayString ?? ""))"))
         }
         if !hotKeys.register(settings.selectionShortcut, for: .translateSelection) {
-            failed.append("traducir selección (\(settings.selectionShortcut?.displayString ?? ""))")
+            failed.append(String(localized: "traducir selección (\(settings.selectionShortcut?.displayString ?? ""))"))
         }
         if !hotKeys.register(settings.promptShortcut, for: .improvePrompt) {
-            failed.append("mejorar prompt (\(settings.promptShortcut?.displayString ?? ""))")
+            failed.append(String(localized: "mejorar prompt (\(settings.promptShortcut?.displayString ?? ""))"))
         }
-        hotKeyProblem = failed.isEmpty ? nil : "No se pudo registrar el atajo de \(failed.joined(separator: " y ")); probablemente lo usa otra app."
+        hotKeyProblem = failed.isEmpty ? nil : String(localized: "No se pudo registrar el atajo de \(ListFormatter.localizedString(byJoining: failed)); probablemente lo usa otra app.")
     }
 
     /// `forDraft`: whole-draft actions (translate, restore), which only run where the app
@@ -524,7 +527,7 @@ final class AppModel {
         if forDraft {
             guard !AppScope.isTerminal(app.bundleIdentifier) else { throw AppError.draftInTerminal }
             guard settings.appScope.allows(app.bundleIdentifier) else {
-                throw AppError.appNotAllowed(app.localizedName ?? "esta app")
+                throw AppError.appNotAllowed(app.localizedName ?? String(localized: "esta app"))
             }
         }
         return DraftAccessor(app: app, mode: settings.accessMode)

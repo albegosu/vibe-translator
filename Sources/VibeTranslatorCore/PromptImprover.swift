@@ -14,8 +14,8 @@ public enum PromptProfile: String, CaseIterable, Identifiable, Sendable {
 
     public var title: String {
         switch self {
-        case .agentTask: "Tarea para agente de código"
-        case .concise: "Pregunta concisa"
+        case .agentTask: String(localized: "Tarea para agente de código")
+        case .concise: String(localized: "Pregunta concisa")
         }
     }
 
@@ -87,10 +87,10 @@ public enum PromptImproveError: LocalizedError, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .nothingToImprove: "No hay texto que mejorar."
-        case .placeholdersLost: "El modelo perdió parte del código, rutas o menciones del prompt."
-        case .answeredInsteadOfRewriting: "El modelo respondió al prompt en vez de reescribirlo."
-        case .noRewriter: "Mejorar prompt necesita un motor LLM (Ollama o Apple Intelligence)."
+        case .nothingToImprove: String(localized: "No hay texto que mejorar.")
+        case .placeholdersLost: String(localized: "El modelo perdió parte del código, rutas o menciones del prompt.")
+        case .answeredInsteadOfRewriting: String(localized: "El modelo respondió al prompt en vez de reescribirlo.")
+        case .noRewriter: String(localized: "Mejorar prompt necesita un motor LLM (Ollama o Apple Intelligence).")
         }
     }
 }
@@ -237,7 +237,7 @@ public struct PromptImprover: Sendable {
         let translation = try await fallback.translate(text)
         return PromptImprovement(
             text: translation.text,
-            engineName: translation.engineName ?? "traducción",
+            engineName: translation.engineName ?? String(localized: "traducción"),
             translatedOnly: true,
             failures: failures + translation.failures
         )

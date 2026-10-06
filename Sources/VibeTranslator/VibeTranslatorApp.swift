@@ -42,22 +42,22 @@ private struct MenuContent: View {
     @Environment(\.openSettings) private var openSettings
 
     var body: some View {
-        Button("Traducir borrador al \(model.settings.targetLanguage.languageName().lowercased())" + shortcutSuffix(model.settings.translateShortcut)) {
+        Button("Traducir borrador al \(model.settings.targetLanguage.languageNameInSentence(in: .ui))\(shortcutSuffix(model.settings.translateShortcut))") {
             Task { await model.translateDraft() }
         }
         .disabled(model.isBusy)
 
-        Button("Restaurar original" + shortcutSuffix(model.settings.restoreShortcut)) {
+        Button("Restaurar original\(shortcutSuffix(model.settings.restoreShortcut))") {
             Task { await model.restoreOriginal() }
         }
         .disabled(model.isBusy || model.lastTranslation == nil || model.lastTranslation?.restored == true)
 
-        Button("Traducir selección" + shortcutSuffix(model.settings.selectionShortcut)) {
+        Button("Traducir selección\(shortcutSuffix(model.settings.selectionShortcut))") {
             Task { await model.translateSelection() }
         }
         .disabled(model.isBusy)
 
-        Button("Mejorar prompt" + shortcutSuffix(model.settings.promptShortcut)) {
+        Button("Mejorar prompt\(shortcutSuffix(model.settings.promptShortcut))") {
             Task { await model.improvePrompt() }
         }
         .disabled(model.isBusy)
@@ -111,9 +111,9 @@ private struct MenuContent: View {
     private var engineWarning: String? {
         switch model.settings.engine {
         case .appleIntelligence:
-            model.appleIntelligenceStatus == "Disponible" ? nil : model.appleIntelligenceStatus
+            model.appleIntelligenceAvailable ? nil : model.appleIntelligenceStatus
         case .ollama:
-            model.ollamaStatus ?? (model.settings.ollamaModel.isEmpty ? "No hay modelo de Ollama elegido." : nil)
+            model.ollamaStatus ?? (model.settings.ollamaModel.isEmpty ? String(localized: "No hay modelo de Ollama elegido.") : nil)
         case .appleTranslation:
             nil
         }

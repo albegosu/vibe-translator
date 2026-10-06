@@ -6,7 +6,7 @@ import VibeTranslatorCore
 /// `TranslationSession` isn't Sendable, so the cached session lives behind a lock and is
 /// only used from nonisolated code (never sent across actors).
 final class AppleTranslationEngine: TranslationEngine, @unchecked Sendable {
-    let displayName = "Apple Translation (en el dispositivo)"
+    let displayName = String(localized: "Apple Translation (en el dispositivo)")
 
     private let lock = NSLock()
     private var cached: (key: String, session: TranslationSession)?

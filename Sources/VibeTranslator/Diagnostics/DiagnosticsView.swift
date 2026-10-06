@@ -7,7 +7,7 @@ struct DiagnosticsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             ScrollView {
-                Text(model.diagnosticsReport ?? "Sin diagnóstico todavía.")
+                Text(model.diagnosticsReport ?? String(localized: "Sin diagnóstico todavía."))
                     .font(.system(.callout, design: .monospaced))
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)

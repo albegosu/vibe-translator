@@ -9,9 +9,9 @@ enum AccessMode: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .automatic: "Automático"
-        case .accessibility: "Accesibilidad (directo)"
-        case .clipboard: "Portapapeles (⌘A ⌘C ⌘V)"
+        case .automatic: String(localized: "Automático")
+        case .accessibility: String(localized: "Accesibilidad (directo)")
+        case .clipboard: String(localized: "Portapapeles (⌘A ⌘C ⌘V)")
         }
     }
 }
@@ -21,8 +21,8 @@ enum AccessMethod: String {
 
     var title: String {
         switch self {
-        case .accessibility: "Accesibilidad"
-        case .clipboard: "Portapapeles"
+        case .accessibility: String(localized: "Accesibilidad")
+        case .clipboard: String(localized: "Portapapeles")
         }
     }
 }
@@ -70,25 +70,25 @@ enum DraftAccessError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .appSwitched:
-            "Has cambiado de app durante la traducción. No se ha reemplazado nada."
+            String(localized: "Has cambiado de app durante la traducción. No se ha reemplazado nada.")
         case let .focusNotInTextField(role):
-            "El foco no está en el cuadro de mensaje (elemento \(role)). Haz clic en el borrador y vuelve a intentarlo."
+            String(localized: "El foco no está en el cuadro de mensaje (elemento \(role)). Haz clic en el borrador y vuelve a intentarlo.")
         case .noReadableField:
-            "No se puede leer el campo activo por Accesibilidad. Prueba el método Portapapeles en Ajustes."
+            String(localized: "No se puede leer el campo activo por Accesibilidad. Prueba el método Portapapeles en Ajustes.")
         case .copyFailed:
-            "No se pudo copiar el borrador. ¿Está vacío o el cursor no está en el cuadro de mensaje?"
+            String(localized: "No se pudo copiar el borrador. ¿Está vacío o el cursor no está en el cuadro de mensaje?")
         case .fieldChanged:
-            "El campo activo ha cambiado (otro canal o ventana). No se ha reemplazado nada."
+            String(localized: "El campo activo ha cambiado (otro canal o ventana). No se ha reemplazado nada.")
         case .draftChanged:
-            "El borrador ha cambiado mientras se traducía. No se ha reemplazado nada."
+            String(localized: "El borrador ha cambiado mientras se traducía. No se ha reemplazado nada.")
         case let .writeFailed(reason):
-            "La app no aceptó el texto por Accesibilidad (\(reason)); el borrador sigue intacto. Prueba el método Automático o Portapapeles."
+            String(localized: "La app no aceptó el texto por Accesibilidad (\(reason)); el borrador sigue intacto. Prueba el método Automático o Portapapeles.")
         case .verificationFailed:
-            "El editor modificó el borrador de forma inesperada al escribir la traducción. Revísalo; el original está en el menú › Copiar original."
+            String(localized: "El editor modificó el borrador de forma inesperada al escribir la traducción. Revísalo; el original está en el menú › Copiar original.")
         case .noSelection:
-            "Selecciona primero el texto que quieres traducir."
+            String(localized: "Selecciona primero el texto que quieres traducir.")
         case .selectionChanged:
-            "La selección ha cambiado. Vuelve a seleccionar el texto y tradúcelo de nuevo."
+            String(localized: "La selección ha cambiado. Vuelve a seleccionar el texto y tradúcelo de nuevo.")
         }
     }
 }
@@ -120,7 +120,7 @@ final class DraftAccessor {
         try ensureFrontmost()
         let element = await focusedElement()
         if let element, !element.isTextInput {
-            throw DraftAccessError.focusNotInTextField(role: element.role ?? "desconocido")
+            throw DraftAccessError.focusNotInTextField(role: element.role ?? String(localized: "desconocido"))
         }
         let identity = identity(focused: element)
         let method = forcedMethod ?? readMethod(for: element)
@@ -224,7 +224,7 @@ final class DraftAccessor {
             try await replaceViaClipboard(expected: expected, with: newText)
             return
         }
-        throw DraftAccessError.writeFailed(result == .success ? "el editor ignoró el cambio" : result.name)
+        throw DraftAccessError.writeFailed(result == .success ? String(localized: "el editor ignoró el cambio") : result.name)
     }
 
     private func waitUntil(timeout: Duration = .milliseconds(300), _ condition: () -> Bool) async -> Bool {

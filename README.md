@@ -27,7 +27,7 @@ VibeTranslator is a native macOS menu bar app written in Swift. Press a shortcut
 It can also translate any text you select (English → Spanish or Spanish → English) and turn a rough request into a clear prompt for an AI assistant or coding agent, both previewed in a floating panel.
 
 > [!NOTE]
-> The app's interface is currently in Spanish.
+> The interface is available in English and Spanish and follows your system language.
 
 ## Features
 
@@ -83,8 +83,8 @@ CODESIGN_IDENTITY="VibeTranslator Dev" scripts/build-app.sh
 
 1. Open the app. A speech-bubble icon appears in the menu bar.
 2. Grant the Accessibility permission when macOS asks (or from the menu).
-3. Pick your languages in **Ajustes… › Traducción › Idiomas** and download their packs for Apple Translation in **Apple Translation › Gestionar…** (the menu also warns you while they're missing).
-4. Pick a translation engine in **Ajustes… › Traducción**. See [Translation engines](#translation-engines).
+3. Pick your languages in **Settings… › Translation › Languages** and download their packs for Apple Translation in **Apple Translation › Manage…** (the menu also warns you while they're missing).
+4. Pick a translation engine in **Settings… › Translation**. See [Translation engines](#translation-engines).
 5. In Discord or any other app, write a draft, keep the cursor in the message box and press `⌃⌥T`.
 
 ## Usage
@@ -98,7 +98,7 @@ CODESIGN_IDENTITY="VibeTranslator Dev" scripts/build-app.sh
 
 All shortcuts can be changed or removed in **Settings › General**, where you can also limit draft translation to a list of apps. Every action works in any app. Terminals (Claude Code and friends) never get their whole input translated, because pasting several lines into a shell runs them: select the text and use translate selection or improve prompt instead.
 
-**Improve prompt** has two profiles in **Settings › Prompts**: *Tarea para agente de código* (for larger tasks, Goal / Context / Requirements / Done when, only the sections that add information) and *Pregunta concisa*. It never adds requirements you didn't write and doesn't repeat itself; it only asks open questions when the agent couldn't proceed otherwise. It needs an LLM engine (Ollama or Apple Intelligence); with Apple Translation it only translates.
+**Improve prompt** has two profiles in **Settings › Prompts**: *Coding agent task* (for larger tasks, Goal / Context / Requirements / Done when, only the sections that add information) and *Concise question*. It never adds requirements you didn't write and doesn't repeat itself; it only asks open questions when the agent couldn't proceed otherwise. It needs an LLM engine (Ollama or Apple Intelligence); with Apple Translation it only translates.
 
 ## Translation engines
 
@@ -116,7 +116,7 @@ LLM engines receive the whole draft in a single request (`{"lines": [...]}`), so
 
 If a check fails, or the engine takes longer than 20 s, the draft is translated with Apple Translation and the notification says so.
 
-The engine and the style profile (tone, glossary, extra instructions) live in **Settings › Traducción** and apply on the next translation, without restarting.
+The engine and the style profile (tone, glossary, extra instructions) live in **Settings › Translation** and apply on the next translation, without restarting.
 
 ## How it works
 
@@ -161,7 +161,7 @@ The engine and the style profile (tone, glossary, extra instructions) live in **
 
 ## Technical validation
 
-The menu's **Validación técnica** entry runs diagnostics on the focused field:
+The menu's **Technical Validation** entry runs diagnostics on the focused field (the report is always in English, ready to paste into an issue):
 
 - **Diagnose focused field**: after 3 s, reports the macOS and app versions, whether the app is Electron, the result of `AXManualAccessibility`, the element's role, attributes and writable properties, and compares `AXValue` with what ⌘A ⌘C returns.
 - **Diagnose and test writing** (with an **empty** draft): also checks whether writing through Accessibility reaches the editor's model (not only the DOM) and whether a multi-line paste arrives intact. The field is cleared afterwards; nothing is ever sent.

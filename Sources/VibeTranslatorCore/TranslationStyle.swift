@@ -9,9 +9,9 @@ public enum TranslationTone: String, CaseIterable, Identifiable, Sendable {
 
     public var title: String {
         switch self {
-        case .relaxedTechnical: "Relajado técnico"
-        case .relaxed: "Relajado"
-        case .neutral: "Neutro"
+        case .relaxedTechnical: String(localized: "Relajado técnico")
+        case .relaxed: String(localized: "Relajado")
+        case .neutral: String(localized: "Neutro")
         }
     }
 

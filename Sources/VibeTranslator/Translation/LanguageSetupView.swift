@@ -46,9 +46,9 @@ struct LanguageSetupView: View {
             nonisolated(unsafe) let session = session
             do {
                 try await session.prepareTranslation()
-                message = "Idiomas listos."
+                message = String(localized: "Idiomas listos.")
             } catch {
-                message = "No se completó la descarga: \(error.localizedDescription)"
+                message = String(localized: "No se completó la descarga: \(error.localizedDescription)")
             }
             await model.refreshLanguageStatus()
         }

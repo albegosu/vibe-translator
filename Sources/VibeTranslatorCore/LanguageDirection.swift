@@ -25,6 +25,11 @@ public struct TranslationLanguage: Codable, Hashable, Identifiable, Sendable {
         return name.prefix(1).uppercased() + name.dropFirst()
     }
 
+    /// The language as it's written mid-sentence ("inglés" in Spanish, "English" in English).
+    public func languageNameInSentence(in locale: Locale = .autoupdatingCurrent) -> String {
+        locale.localizedString(forLanguageCode: languageCode) ?? languageCode
+    }
+
     /// Same language regardless of the region ("es-ES" and "es-419").
     public func isSameLanguage(as other: TranslationLanguage) -> Bool {
         languageCode == other.languageCode

@@ -174,7 +174,7 @@ private struct SelectionPanelView: View {
                     Text(note).font(.caption).foregroundStyle(.secondary)
                 }
                 HStack {
-                    Text("↩ \(state.canReplace ? "reemplazar" : "copiar") · esc cerrar")
+                    Text(state.canReplace ? "↩ reemplazar · esc cerrar" : "↩ copiar · esc cerrar")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                     Spacer()

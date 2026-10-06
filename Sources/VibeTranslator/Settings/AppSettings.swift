@@ -11,9 +11,9 @@ enum EngineKind: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .appleIntelligence: "Apple Intelligence (LLM en el Mac)"
+        case .appleIntelligence: String(localized: "Apple Intelligence (LLM en el Mac)")
         case .ollama: "Ollama (LLM)"
-        case .appleTranslation: "Apple Translation (traducción automática)"
+        case .appleTranslation: String(localized: "Apple Translation (traducción automática)")
         }
     }
 
