@@ -5,8 +5,8 @@
 <h1 align="center">VibeTranslator</h1>
 
 <p align="center">
-  Translate your Discord drafts from Spanish to English with a single keyboard shortcut.<br>
-  The translation lands right in the message box, ready for you to review and send.
+  Write in Spanish, send natural English: one keyboard shortcut translates your draft<br>
+  right in the message box, in Discord or any other app. It also turns rough requests into clear AI prompts.
 </p>
 
 <p align="center">
@@ -24,7 +24,7 @@
 
 VibeTranslator is a native macOS menu bar app written in Swift. Press a shortcut while writing in Discord (or any other app) and your Spanish draft is replaced with a natural English translation. Mentions, links, emoji, code and formatting stay intact. The app never sends anything: you stay in control of the final message.
 
-It can also translate any text you select, in any app (English → Spanish or Spanish → English), and show the result in a floating panel.
+It can also translate any text you select (English → Spanish or Spanish → English) and turn a rough request into a clear prompt for an AI assistant or coding agent, both previewed in a floating panel.
 
 > [!NOTE]
 > The app's interface is currently in Spanish.
@@ -33,7 +33,7 @@ It can also translate any text you select, in any app (English → Spanish or Sp
 
 - **Translate your draft**: one global shortcut translates the whole draft in place, ready to send. Built for Discord, it works in any app (Slack, Teams, Mail…), or only in the apps you choose.
 - **Translate a selection**: select text anywhere (someone's message, a web page, a PDF) and get the translation in a floating panel next to the cursor, with **Copy** and, if the selection is editable, **Replace**. The language is detected automatically.
-- **Improve a prompt** *(experimental)*: turn a rough request, in Spanish or English, into a clear, structured prompt in English for an AI assistant or coding agent. Code blocks, file paths, `@mentions`, URLs, `{{variables}}` and XML tags are kept intact. Preview it in the floating panel, then **Replace** or **Copy**.
+- **Improve a prompt** *(experimental)*: turn a rough request, in Spanish or English, into a clear prompt in English for an AI assistant or coding agent. Small requests stay one or two sentences; larger ones get only the sections that help. Code blocks, file paths, `@mentions`, URLs, `{{variables}}` and XML tags are kept intact. Preview it, then **Replace** or **Copy**.
 - **Natural, not literal**: by default an LLM translates with a tone profile ("relaxed technical" out of the box), a glossary of terms to keep, and your own instructions. Idioms and slang are rendered by meaning.
 - **Markup is preserved**: mentions (`<@id>`, `@user`, `@everyone`, `#channel`), emoji (Unicode, `:shortcode:`, `<:custom:id>`), links, inline code and code blocks, formatting (`**`, `||`, `~~`…), line prefixes (`>`, `-`, `#`, `-#`), line breaks and indentation.
 - **Safe replacement**: the draft is only replaced if the same app, window or channel, field and text are still there. If anything changed while translating, nothing is touched.
@@ -82,9 +82,9 @@ CODESIGN_IDENTITY="VibeTranslator Dev" scripts/build-app.sh
 
 1. Open the app. A speech-bubble icon appears in the menu bar.
 2. Grant the Accessibility permission when macOS asks (or from the menu).
-3. Open **Idiomas español → inglés…** in the menu and download the language packs.
-4. Pick a translation engine in **Ajustes…** (Settings). See [Translation engines](#translation-engines).
-5. In Discord, write a draft, keep the cursor in the message box and press `⌃⌥T`.
+3. Download the Spanish and English packs for Apple Translation: **Ajustes… › Traducción › Apple Translation › Gestionar…** (the menu also warns you while they're missing).
+4. Pick a translation engine in **Ajustes… › Traducción**. See [Translation engines](#translation-engines).
+5. In Discord or any other app, write a draft, keep the cursor in the message box and press `⌃⌥T`.
 
 ## Usage
 
@@ -95,9 +95,9 @@ CODESIGN_IDENTITY="VibeTranslator Dev" scripts/build-app.sh
 | `⌃⌥Y` | Translate the selected text in a floating panel (direction detected automatically) |
 | `⌃⌥P` | Improve the selected prompt, or the whole field, and preview it before replacing (experimental) |
 
-All shortcuts can be changed or removed in Settings. Every action works in any app; in **Settings › General** you can limit draft translation to a list of apps. Terminals (Claude Code and friends) never get their whole input translated, because pasting several lines into a shell runs them: select the text and use translate selection or improve prompt instead.
+All shortcuts can be changed or removed in **Settings › General**, where you can also limit draft translation to a list of apps. Every action works in any app. Terminals (Claude Code and friends) never get their whole input translated, because pasting several lines into a shell runs them: select the text and use translate selection or improve prompt instead.
 
-**Improve prompt** has two profiles in Settings: *Tarea para agente de código* (Goal / Context / Requirements / Done when) and *Pregunta concisa*. It never adds requirements you didn't write, and it lists open questions instead of guessing. It needs an LLM engine (Ollama or Apple Intelligence); with Apple Translation it only translates.
+**Improve prompt** has two profiles in **Settings › Prompts**: *Tarea para agente de código* (for larger tasks, Goal / Context / Requirements / Done when, only the sections that add information) and *Pregunta concisa*. It never adds requirements you didn't write and doesn't repeat itself; it only asks open questions when the agent couldn't proceed otherwise. It needs an LLM engine (Ollama or Apple Intelligence); with Apple Translation it only translates.
 
 ## Translation engines
 
@@ -115,7 +115,7 @@ LLM engines receive the whole draft in a single request (`{"lines": [...]}`), so
 
 If a check fails, or the engine takes longer than 20 s, the draft is translated with Apple Translation and the notification says so.
 
-The style profile (tone, glossary, extra instructions) lives in **Settings › Estilo** and applies on the next translation, without restarting.
+The engine and the style profile (tone, glossary, extra instructions) live in **Settings › Traducción** and apply on the next translation, without restarting.
 
 ## How it works
 
@@ -143,6 +143,14 @@ The style profile (tone, glossary, extra instructions) lives in **Settings › E
 4. Each placeholder must come back **exactly once**. If the engine dropped or duplicated one, that line is translated fragment by fragment instead, so markup is never lost.
 5. The first letter of each line is matched to the original's case, whatever the engine returned.
 
+### Improving a prompt
+
+`PromptImprover` rewrites the whole text in one request instead of line by line:
+
+1. Code blocks, file paths, `@mentions`, URLs, template variables and XML tags become `⟦n⟧` tokens.
+2. Every token must come back. A path may be mentioned twice, but a code block must appear exactly once and is always put back on lines of its own.
+3. A rewrite that starts answering the request (new code) is rejected; if every LLM fails, the prompt is at least translated with Apple Translation.
+
 ## Privacy
 
 - VibeTranslator has no server, no analytics and no telemetry.
@@ -165,10 +173,12 @@ The report opens in a window and is saved to `~/Library/Logs/VibeTranslator/`.
 Sources/VibeTranslatorCore/       Pure, tested logic
   DraftMarkup.swift               Discord markup recognition
   DraftTranslator.swift           Line-by-line pipeline, placeholders, engine fallback chain
+  PromptImprover.swift            "Improve prompt": token masking, instructions, validation
   TranslationStyle.swift          Tone profile and LLM prompt / response format
   LanguageDirection.swift         Language detection for "translate selection"
+  AppScope.swift                  Apps where draft translation may act; terminals excluded
 Sources/VibeTranslator/           Menu bar app
-  AppModel.swift                  Orchestrates translate / restore / selection / diagnostics
+  AppModel.swift                  Orchestrates translate / restore / selection / prompts / diagnostics
   Draft/                          Safe reading and replacing (Accessibility and clipboard)
   Translation/                    Ollama, Apple Intelligence and Apple Translation engines
   System/                         Accessibility, global shortcuts (Carbon), keyboard, clipboard
@@ -181,6 +191,7 @@ scripts/demo/                     Renders the README demo (Playwright + ffmpeg)
 ## Known limitations
 
 - Draft translation is Spanish → English only; selection translation detects the direction.
+- Improve prompt is experimental: the result depends on the model, so always read the preview before replacing.
 - Tone only applies to LLM engines; Apple Translation doesn't take instructions.
 - Replacing a selection has no "Restore original"; use ⌘Z in the app itself.
 - Markdown links (`[text](url)`) are kept whole, without translating the text.
