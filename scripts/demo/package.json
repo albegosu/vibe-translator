@@ -1,0 +1,14 @@
+{
+  "name": "vibetranslator-demo",
+  "private": true,
+  "type": "module",
+  "description": "Renders the README demo (docs/assets/demo.gif) from stage.html with Playwright and ffmpeg.",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "render": "node render.mjs",
+    "preview": "PREVIEW=1 node render.mjs"
+  },
+  "dependencies": {
+    "playwright-core": "1.63.0"
+  }
+}

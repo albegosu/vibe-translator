@@ -16,6 +16,10 @@
   <img src="https://img.shields.io/badge/Swift-6.2%2B-orange.svg" alt="Swift 6.2+">
 </p>
 
+<p align="center">
+  <img src="docs/assets/demo.gif" width="880" alt="Demo: a selected English message is translated into Spanish in a floating panel, then a Spanish reply with a mention, an emoji and inline code is replaced in place by natural English with the shortcut">
+</p>
+
 ---
 
 VibeTranslator is a native macOS menu bar app written in Swift. Press a shortcut while writing in Discord and your Spanish draft is replaced with a natural English translation. Mentions, links, emoji, code and formatting stay intact. The app never sends anything: you stay in control of the final message.
@@ -166,7 +170,8 @@ Sources/VibeTranslator/           Menu bar app
   System/                         Accessibility, global shortcuts (Carbon), keyboard, clipboard
   Settings/ UI/ Diagnostics/      Settings, HUD, floating panel, validation report
 Tests/VibeTranslatorCoreTests/    Unit tests (Swift Testing)
-scripts/                          App bundle, icon, demo GIF and release notes
+scripts/                          App bundle, icon, release notes and helper scripts
+scripts/demo/                     Renders the README demo (Playwright + ffmpeg)
 ```
 
 ## Known limitations

@@ -35,7 +35,8 @@ Handy scripts:
 
 - `swift scripts/make-icon.swift`: regenerates the app icon and the README logo.
 - `swift scripts/inspect-pasteboard.swift`: prints every format on the clipboard (read-only), including Chromium's web custom data. Copy something in an editor first; it shows how that editor serializes mentions, emoji and other rich content.
-- `scripts/make-demo-gif.sh <recording.mov>`: turns a screen recording into `docs/assets/demo.gif`.
+- `scripts/demo/`: renders the README demo frame by frame from `stage.html` (`npm install && npm run render`; `npm run preview` for a few stills). The chat app in it is fictional; keep its translations real outputs of the pipeline.
+- `scripts/make-demo-gif.sh <recording.mov>`: turns a real screen recording into a GIF, if you'd rather record one.
 
 ## Project layout
 

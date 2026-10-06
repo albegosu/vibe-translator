@@ -6,3 +6,4 @@ DerivedData/
 .DS_Store
 .claude/settings.local.json
 .local/
+scripts/demo/node_modules/

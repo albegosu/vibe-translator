@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>VibeTranslator demo</title>
+<!--
+  Demo stage for scripts/demo/render.mjs. Everything on screen is a pure function of
+  time: window.renderAt(seconds) sets the whole frame, so renders are deterministic.
+  The chat app is fictional; the translations are real outputs of the app's pipeline.
+-->
+<style>
+  :root {
+    --ink: #f4f4f5;
+    --muted: #a1a1aa;
+    --faint: #71717a;
+    --line: rgba(255, 255, 255, .08);
+    --violet: #8b5cf6;
+    --accent: #0a84ff;
+    --sans: system-ui, -apple-system, "SF Pro Text", "Helvetica Neue", sans-serif;
+    --mono: "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1280px; height: 720px; overflow: hidden; background: #08080a; }
+  body { font-family: var(--sans); color: var(--ink); -webkit-font-smoothing: antialiased; }
+
+  #scene { position: absolute; inset: 0; }
+  .backdrop {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(520px 300px at 22% 108%, rgba(139, 92, 246, .55), transparent 70%),
+      radial-gradient(480px 280px at 72% 112%, rgba(236, 72, 153, .42), transparent 70%),
+      radial-gradient(420px 220px at 48% 118%, rgba(34, 211, 238, .30), transparent 70%),
+      radial-gradient(300px 200px at 94% 96%, rgba(249, 115, 22, .22), transparent 70%),
+      linear-gradient(#0d0d10, #08080a);
+  }
+  .grain {
+    position: absolute; inset: 0; opacity: .07; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+
+  /* macOS menu bar */
+  #menubar {
+    position: absolute; top: 0; left: 0; right: 0; height: 26px; padding: 0 14px;
+    display: flex; align-items: center; gap: 18px; font-size: 13px;
+    background: rgba(24, 24, 27, .72); border-bottom: 1px solid var(--line);
+  }
+  #menubar .app { font-weight: 700; }
+  #menubar .spacer { flex: 1; }
+  #menubar .status { display: flex; align-items: center; gap: 16px; color: var(--ink); }
+  #vt-icon { width: 20px; height: 18px; display: grid; place-items: center; border-radius: 4px; }
+  #vt-icon svg { width: 18px; height: 16px; }
+
+  /* App window */
+  #window {
+    position: absolute; left: 140px; top: 46px; width: 1000px; height: 506px;
+    border-radius: 14px; overflow: hidden; background: #18181b;
+    border: 1px solid rgba(255, 255, 255, .1);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, .55), 0 0 0 .5px rgba(0, 0, 0, .8);
+    display: grid; grid-template-rows: 40px 1fr; grid-template-columns: 208px 1fr;
+  }
+  .titlebar {
+    grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; padding: 0 14px;
+    background: #1c1c1f; border-bottom: 1px solid var(--line); position: relative;
+  }
+  .titlebar i { width: 12px; height: 12px; border-radius: 50%; display: block; }
+  .titlebar .title { position: absolute; left: 0; right: 0; text-align: center; font-size: 13px; color: var(--muted); font-weight: 600; }
+  .sidebar { background: #141416; border-right: 1px solid var(--line); padding: 14px 10px; font-size: 14px; color: var(--muted); }
+  .sidebar .ws { color: var(--ink); font-weight: 700; font-size: 15px; padding: 2px 8px 14px; }
+  .sidebar .section { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--faint); padding: 10px 8px 6px; }
+  .sidebar .item { padding: 5px 8px; border-radius: 6px; }
+  .sidebar .item.active { background: rgba(255, 255, 255, .08); color: var(--ink); }
+  .main { display: grid; grid-template-rows: 48px 1fr auto; min-height: 0; position: relative; }
+  .channel { display: flex; align-items: center; padding: 0 20px; font-weight: 700; font-size: 15px; border-bottom: 1px solid var(--line); }
+  .channel span { color: var(--faint); font-weight: 400; margin-left: 10px; font-size: 13px; }
+  .messages { padding: 18px 20px 0; display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; }
+  .msg { display: grid; grid-template-columns: 40px 1fr; column-gap: 12px; }
+  .avatar { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 15px; }
+  .who { font-weight: 700; font-size: 15px; }
+  .who time { font-weight: 400; color: var(--faint); font-size: 12px; margin-left: 8px; }
+  .line { font-size: 16.5px; line-height: 1.5; color: #e4e4e7; position: relative; width: fit-content; }
+  .line.cont { margin-left: 52px; isolation: isolate; }
+  #selection { position: absolute; left: -2px; top: 1px; bottom: 1px; border-radius: 3px; background: rgba(10, 132, 255, .38); z-index: -1; }
+
+  .composer-wrap { padding: 14px 20px 20px; }
+  #composer {
+    min-height: 52px; border-radius: 12px; background: #232327; border: 1px solid rgba(255, 255, 255, .06);
+    padding: 13px 16px; font-size: 16.5px; line-height: 1.5; display: grid;
+  }
+  #composer > .layer { grid-area: 1 / 1; }
+  .placeholder { color: var(--faint); }
+  .caret { display: inline-block; width: 2px; height: 1.15em; background: var(--ink); vertical-align: -3px; margin-left: 1px; }
+  .mention { background: rgba(139, 92, 246, .22); color: #c4b5fd; border-radius: 4px; padding: 0 3px; font-weight: 600; }
+  .code { font-family: var(--mono); font-size: .88em; background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .08); border-radius: 4px; padding: 1px 4px; }
+  .emoji { border-radius: 4px; }
+
+  /* VibeTranslator HUD (matches the app's) */
+  #hud {
+    position: absolute; top: 48px; left: 50%; display: flex; align-items: center; gap: 10px;
+    padding: 11px 16px; max-width: 460px; border-radius: 12px; font-size: 13.5px; font-weight: 500; line-height: 1.35;
+    background: rgba(44, 44, 48, .92); border: 1px solid rgba(255, 255, 255, .12); box-shadow: 0 8px 24px rgba(0, 0, 0, .4);
+    backdrop-filter: blur(20px);
+  }
+  .spinner { width: 16px; height: 16px; flex: none; }
+  .check { width: 18px; height: 18px; flex: none; }
+
+  /* Translate-selection panel (matches the app's) */
+  #panel {
+    position: absolute; width: 420px; padding: 14px; border-radius: 12px;
+    background: #2a2a2e; border: 1px solid rgba(255, 255, 255, .12);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .45);
+  }
+  #panel .head { display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; font-weight: 600; color: var(--muted); margin-bottom: 10px; }
+  #panel .head b { width: 16px; height: 16px; border-radius: 50%; background: rgba(255, 255, 255, .22); display: inline-block; }
+  #panel .body { font-size: 14px; line-height: 1.45; min-height: 20px; }
+  #panel .foot { display: flex; justify-content: flex-end; margin-top: 12px; }
+  #panel .btn { background: var(--accent); color: white; font-size: 13px; font-weight: 600; padding: 4px 12px; border-radius: 6px; }
+  #panel .loading { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 14px; }
+
+  /* Overlays */
+  #keys { position: absolute; top: 568px; left: 50%; display: flex; gap: 8px; }
+  .key {
+    min-width: 50px; height: 50px; padding: 0 12px; border-radius: 11px; display: grid; place-items: center;
+    font-size: 23px; font-weight: 600; color: var(--ink);
+    background: linear-gradient(#3a3a40, #2a2a2f); border: 1px solid rgba(255, 255, 255, .16);
+    box-shadow: 0 4px 0 #18181b, 0 8px 20px rgba(0, 0, 0, .5);
+  }
+  #cursor { position: absolute; width: 22px; height: 28px; left: 0; top: 0; }
+  #caption {
+    position: absolute; left: 0; right: 0; top: 634px; text-align: center;
+    font-size: 30px; font-weight: 700; letter-spacing: -.01em; text-shadow: 0 2px 20px rgba(0, 0, 0, .6);
+  }
+
+  /* End card */
+  #endcard { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; isolation: isolate; }
+  #endcard .backdrop { z-index: -1; }
+  #endcard img { width: 150px; height: 150px; display: block; margin: 0 auto 22px; }
+  #endcard h1 { font-size: 58px; font-weight: 800; letter-spacing: -.02em; }
+  #endcard p { font-size: 23px; color: #d4d4d8; margin-top: 10px; }
+  #endcard .meta { font-size: 18px; color: var(--muted); margin-top: 28px; }
+</style>
+</head>
+<body>
+<div id="scene">
+  <div class="backdrop"></div>
+  <div class="grain"></div>
+
+  <div id="menubar">
+    <span class="app">Team Chat</span><span>File</span><span>Edit</span><span>View</span><span>Window</span>
+    <span class="spacer"></span>
+    <span class="status">
+      <span id="vt-icon"></span>
+      <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="#f4f4f5" stroke-width="1.6" stroke-linecap="round"><path d="M1.5 4.2a9.5 9.5 0 0 1 13 0M4 7a5.8 5.8 0 0 1 8 0"/><circle cx="8" cy="10" r="1" fill="#f4f4f5" stroke="none"/></svg>
+      <span>Tue 10:43</span>
+    </span>
+  </div>
+
+  <div id="window">
+    <div class="titlebar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><div class="title">Team Chat</div></div>
+    <div class="sidebar">
+      <div class="ws">Acme Dev</div>
+      <div class="section">Channels</div>
+      <div class="item"># general</div>
+      <div class="item active"># backend</div>
+      <div class="item"># deploys</div>
+      <div class="item"># random</div>
+      <div class="section">Direct messages</div>
+      <div class="item">ana</div>
+      <div class="item">sam</div>
+    </div>
+    <div class="main">
+      <div class="channel"># backend <span>Builds, deploys and on-call</span></div>
+      <div class="messages">
+        <div class="msg">
+          <div class="avatar" style="background:#4c1d95;color:#ddd6fe">S</div>
+          <div><div class="who">sam <time>10:12</time></div><div class="line">CI is green again ✅ thanks for the quick review</div></div>
+        </div>
+        <div style="height:14px"></div>
+        <div class="msg">
+          <div class="avatar" style="background:#831843;color:#fbcfe8">L</div>
+          <div><div class="who">lucía <time>10:31</time></div><div class="line">standup moved to 11 today ☕️</div></div>
+        </div>
+        <div style="height:14px"></div>
+        <div class="msg">
+          <div class="avatar" style="background:#4c1d95;color:#ddd6fe">S</div>
+          <div><div class="who">sam <time>10:38</time></div><div class="line">pushed the fix for the cache headers, should be live in a bit</div></div>
+        </div>
+        <div style="height:14px"></div>
+        <div class="msg">
+          <div class="avatar" style="background:#134e4a;color:#99f6e4">A</div>
+          <div><div class="who">ana <time>10:42</time></div><div class="line">morning! staging is throwing alerts again 😩</div></div>
+        </div>
+        <div class="line cont" id="target"><span id="selection"></span><span id="target-text">the deploy went sideways again, can you take a look when you get a sec?</span></div>
+      </div>
+      <div class="composer-wrap"><div id="composer"></div></div>
+    </div>
+  </div>
+
+  <div id="hud"></div>
+  <div id="panel"></div>
+  <div id="keys"></div>
+  <div id="caption"></div>
+  <svg id="cursor" viewBox="0 0 22 28"><path d="M2 1.5v21.2l5.4-5.2 3.4 8 3.6-1.6-3.4-7.8h7.4z" fill="#111" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>
+</div>
+
+<div id="endcard">
+  <div class="backdrop"></div>
+  <div>
+    <img src="../../docs/assets/icon.png" alt="">
+    <h1>VibeTranslator</h1>
+    <p>Write in Spanish. Send natural English.</p>
+    <div class="meta">Open source · macOS menu bar app · github.com/albegosu/vibe-translator</div>
+  </div>
+</div>
+
+<script>
+// ---------- Content (translations are real outputs of the app's pipeline) ----------
+const DRAFT_ES = [
+  { kind: "mention", text: "@ana" },
+  { kind: "text", text: " no te rayes, el deploy está hecho un cristo pero mañana le damos una vuelta " },
+  { kind: "emoji", text: "🙏" },
+  { kind: "text", text: " revisa " },
+  { kind: "code", text: "values.yaml" },
+];
+const DRAFT_EN = [
+  { kind: "mention", text: "@ana" },
+  { kind: "text", text: " don't sweat it, the deploy is a total mess but we'll take another look at it tomorrow " },
+  { kind: "emoji", text: "🙏" },
+  { kind: "text", text: " check " },
+  { kind: "code", text: "values.yaml" },
+];
+const SELECTION_ES = "el deploy ha vuelto a petar, ¿le echas un ojo cuando tengas un hueco?";
+const HUD_DONE = "Traducido con Ollama (gemma4:31b-cloud). Revísalo y envíalo cuando quieras.";
+
+// ---------- Timeline (seconds) ----------
+const T = {
+  cursorIn: 0.5, selectStart: 1.1, selectEnd: 1.9,
+  keysSel: 2.15, panelIn: 2.45, panelText: 3.15, panelOut: 5.0,
+  toComposer: 5.15, composerClick: 5.75,
+  typeStart: 5.95, typeEnd: 9.55,
+  keysT: 9.95, hudIn: 10.25, swap: 11.15, swapDur: .38, glow: 11.6, glowEnd: 12.9,
+  hudOut: 14.2, endIn: 14.5, total: 17.4,
+};
+window.DEMO_DURATION = T.total;
+
+const CAPTIONS = [
+  [0.25, 4.9, "Understand any message"],
+  [5.1, 9.75, "Reply in Spanish"],
+  [9.75, 11.35, "Press ⌃⌥T"],
+  [11.35, 14.35, "Natural English. Nothing broken."],
+];
+
+// ---------- Helpers ----------
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const easeOut = (x) => 1 - Math.pow(1 - x, 3);
+const easeInOut = (x) => (x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const fadeWindow = (t, a, b, f = .25) => Math.min(prog(t, a, a + f), 1 - prog(t, b - f, b));
+const lerp = (a, b, x) => a + (b - a) * x;
+const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+
+// Deterministic, slightly irregular typing rhythm.
+function typingSchedule(segments, start, end) {
+  let seed = 7;
+  const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const units = [];
+  segments.forEach((seg, si) => {
+    if (seg.kind === "text" || seg.kind === "code") {
+      [...seg.text].forEach((ch, ci) => units.push({ si, ci, weight: ch === " " ? 1.5 : .7 + rand() * .7 }));
+    } else {
+      units.push({ si, ci: 0, weight: seg.kind === "mention" ? 5 : 2.5 });
+    }
+  });
+  const total = units.reduce((s, u) => s + u.weight, 0);
+  let acc = 0;
+  units.forEach((u) => { acc += u.weight; u.at = start + (acc / total) * (end - start); });
+  return units;
+}
+const SCHEDULE = typingSchedule(DRAFT_ES, T.typeStart, T.typeEnd);
+
+function renderDraft(segments, visible, glow = 0) {
+  const shown = new Map();
+  if (visible === Infinity) segments.forEach((s, i) => shown.set(i, [...s.text].length));
+  else visible.forEach((u) => shown.set(u.si, Math.max(shown.get(u.si) ?? 0, u.ci + 1)));
+  const ring = glow > 0 ? `box-shadow:0 0 0 2px rgba(196,181,253,${glow}),0 0 18px rgba(139,92,246,${glow * .8});` : "";
+  return segments.map((seg, i) => {
+    const n = shown.get(i);
+    if (!n) return "";
+    const whole = seg.kind === "mention" || seg.kind === "emoji";
+    const text = esc(whole ? seg.text : [...seg.text].slice(0, n).join(""));
+    if (seg.kind === "mention") return `<span class="mention" style="${ring}">${text}</span>`;
+    if (seg.kind === "code") return `<span class="code" style="${ring}">${text}</span>`;
+    if (seg.kind === "emoji") return `<span class="emoji" style="${ring}">${text}</span>`;
+    return text;
+  }).join("");
+}
+
+const ICON_IDLE = `<svg viewBox="0 0 18 16" fill="none" stroke="#f4f4f5" stroke-width="1.5"><path d="M3.5 1.5h11a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H8l-3.5 3v-3h-1a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2z" stroke-linejoin="round"/><path d="M6.5 9l2.5-6 2.5 6M7.4 7h3.2" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.3"/></svg>`;
+const ICON_BUSY = `<svg viewBox="0 0 18 16"><path d="M3.5 1.5h11a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H8l-3.5 3v-3h-1a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2z" fill="#f4f4f5"/><circle cx="6" cy="6.5" r="1.1" fill="#18181b"/><circle cx="9" cy="6.5" r="1.1" fill="#18181b"/><circle cx="12" cy="6.5" r="1.1" fill="#18181b"/></svg>`;
+const spinner = (t) => `<svg class="spinner" viewBox="0 0 16 16" style="transform:rotate(${(t * 720) % 360}deg)"><circle cx="8" cy="8" r="6.2" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="2.2"/><path d="M8 1.8a6.2 6.2 0 0 1 6.2 6.2" fill="none" stroke="#e4e4e7" stroke-width="2.2" stroke-linecap="round"/></svg>`;
+const CHECK = `<svg class="check" viewBox="0 0 18 18"><circle cx="9" cy="9" r="9" fill="#30d158"/><path d="M5.2 9.3l2.6 2.5 5-5.4" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+function keys(labels, t, start) {
+  const appear = easeOut(prog(t, start, start + .18));
+  const out = 1 - prog(t, start + 1.05, start + 1.3);
+  const pressed = t > start + .32 && t < start + .55;
+  return { html: labels.map((k) => `<div class="key" style="${pressed ? "transform:translateY(3px);box-shadow:0 1px 0 #18181b,0 4px 12px rgba(0,0,0,.5);background:linear-gradient(#4a4a52,#35353b)" : ""}">${k}</div>`).join(""), opacity: Math.min(appear, out), scale: lerp(.9, 1, appear) };
+}
+
+// ---------- Frame ----------
+let targetBox = null, composerBox = null;
+window.renderAt = function renderAt(t) {
+  if (!targetBox) {
+    targetBox = $("target-text").getBoundingClientRect();
+    composerBox = $("composer").getBoundingClientRect();
+  }
+
+  // Selection on ana's message.
+  const sel = easeInOut(prog(t, T.selectStart, T.selectEnd));
+  const selVisible = t >= T.selectStart && t < T.panelOut + .1;
+  $("selection").style.width = selVisible ? `${sel * (targetBox.width + 4)}px` : "0px";
+
+  // Floating translate-selection panel.
+  const panelA = Math.min(easeOut(prog(t, T.panelIn, T.panelIn + .22)), 1 - prog(t, T.panelOut, T.panelOut + .2));
+  const panel = $("panel");
+  panel.style.opacity = panelA;
+  panel.style.left = `${targetBox.right - 380}px`;
+  panel.style.transformOrigin = "bottom right";
+  panel.style.transform = `scale(${lerp(.96, 1, easeOut(prog(t, T.panelIn, T.panelIn + .22)))})`;
+  if (panelA > 0) {
+    const textA = easeOut(prog(t, T.panelText, T.panelText + .25));
+    panel.innerHTML = `<div class="head"><span>Inglés → Español</span><b></b></div>` +
+      (t < T.panelText ? `<div class="loading">${spinner(t)} Traduciendo…</div>`
+        : `<div class="body" style="opacity:${textA}">${esc(SELECTION_ES)}</div><div class="foot" style="opacity:${textA}"><span class="btn">Copiar</span></div>`);
+    panel.style.top = `${targetBox.top - panel.offsetHeight - 14}px`;
+  }
+
+  // Composer.
+  const composer = $("composer");
+  const focused = t >= T.composerClick;
+  composer.style.borderColor = focused ? "rgba(139,92,246,.45)" : "rgba(255,255,255,.06)";
+  const caretOn = (t >= T.typeStart && t <= T.typeEnd + .05) || Math.floor(t * 2) % 2 === 0;
+  const caret = focused && t < T.swap && caretOn ? `<span class="caret"></span>` : "";
+  const typed = SCHEDULE.filter((u) => u.at <= t);
+  const swap = easeInOut(prog(t, T.swap, T.swap + T.swapDur));
+  const dim = t >= T.hudIn && t < T.swap ? .55 : 1;
+  const glow = Math.sin(Math.PI * prog(t, T.glow, T.glowEnd)) * .9;
+  if (!typed.length) {
+    composer.innerHTML = `<div class="layer placeholder">Message #backend${caret}</div>`;
+  } else {
+    composer.innerHTML =
+      `<div class="layer" style="opacity:${(1 - swap) * dim};filter:blur(${swap * 4}px)">${renderDraft(DRAFT_ES, typed)}${caret}</div>` +
+      (swap > 0 ? `<div class="layer" style="opacity:${swap};filter:blur(${(1 - swap) * 4}px)">${renderDraft(DRAFT_EN, Infinity, glow)}</div>` : "");
+  }
+
+  // HUD and menu bar icon.
+  const hud = $("hud");
+  const hudA = Math.min(easeOut(prog(t, T.hudIn, T.hudIn + .18)), 1 - prog(t, T.hudOut, T.hudOut + .25));
+  hud.style.opacity = hudA;
+  hud.style.transform = `translateX(-50%) translateY(${lerp(-6, 0, easeOut(prog(t, T.hudIn, T.hudIn + .2)))}px)`;
+  hud.innerHTML = t < T.swap ? `${spinner(t)}<span>Traduciendo…</span>` : `${CHECK}<span>${HUD_DONE}</span>`;
+  $("vt-icon").innerHTML = t >= T.hudIn && t < T.swap ? ICON_BUSY : ICON_IDLE;
+  $("vt-icon").style.background = t >= T.hudIn && t < T.swap ? "rgba(255,255,255,.18)" : "transparent";
+
+  // Shortcut keycaps.
+  const k = t < T.toComposer ? keys(["⌃", "⌥", "Y"], t, T.keysSel) : keys(["⌃", "⌥", "T"], t, T.keysT);
+  const keysEl = $("keys");
+  keysEl.innerHTML = k.html;
+  keysEl.style.opacity = k.opacity;
+  keysEl.style.transform = `translateX(-50%) scale(${k.scale})`;
+
+  // Cursor: onto ana's message, drag across it, then down to the composer.
+  const start = { x: targetBox.left - 2, y: targetBox.top + 4 };
+  const selEnd = { x: targetBox.right + 2, y: targetBox.top + 4 };
+  const inField = { x: composerBox.left + 220, y: composerBox.top + 14 };
+  let p;
+  if (t < T.selectStart) p = { x: lerp(start.x + 160, start.x, easeInOut(prog(t, T.cursorIn, T.selectStart - .1))), y: lerp(start.y + 140, start.y, easeInOut(prog(t, T.cursorIn, T.selectStart - .1))) };
+  else if (t < T.toComposer) p = { x: lerp(start.x, selEnd.x, sel), y: start.y };
+  else p = { x: lerp(selEnd.x, inField.x, easeInOut(prog(t, T.toComposer, T.composerClick - .1))), y: lerp(selEnd.y, inField.y, easeInOut(prog(t, T.toComposer, T.composerClick - .1))) };
+  const cursor = $("cursor");
+  cursor.style.transform = `translate(${p.x}px, ${p.y}px)`;
+  cursor.style.opacity = Math.min(prog(t, T.cursorIn - .2, T.cursorIn), 1 - prog(t, T.typeStart + .3, T.typeStart + .6));
+
+  // Caption.
+  const cap = CAPTIONS.find(([a, b]) => t >= a && t < b);
+  const caption = $("caption");
+  caption.textContent = cap ? cap[2] : "";
+  caption.style.opacity = cap ? fadeWindow(t, cap[0], cap[1], .2) : 0;
+
+  // End card.
+  const end = easeInOut(prog(t, T.endIn, T.endIn + .5));
+  $("endcard").style.opacity = end;
+  $("scene").style.opacity = 1 - end;
+  const endUp = easeOut(prog(t, T.endIn + .2, T.endIn + 1));
+  $("endcard").firstElementChild.nextElementSibling.style.transform = `translateY(${lerp(16, 0, endUp)}px)`;
+};
+
+window.renderAt(0);
+</script>
+</body>
+</html>
