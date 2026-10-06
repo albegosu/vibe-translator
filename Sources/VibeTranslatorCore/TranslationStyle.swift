@@ -18,7 +18,7 @@ public enum TranslationTone: String, CaseIterable, Identifiable, Sendable {
     var guidance: String {
         switch self {
         case .relaxedTechnical:
-            "Casual and direct, like a software engineer chatting with teammates on Discord. Keep the usual engineering jargon in English (PR, deploy, merge, bug, rollback, staging) and use contractions where natural. Avoid formal or stiff phrasing."
+            "Casual and direct, like a software engineer chatting with teammates. Keep the usual engineering jargon in English (PR, deploy, merge, bug, rollback, staging) and use contractions where natural. Avoid formal or stiff phrasing."
         case .relaxed:
             "Casual, warm and natural, like chatting with friends. Use contractions and everyday expressions."
         case .neutral:
@@ -70,7 +70,7 @@ public enum LLMPrompt {
             rules.append("Keep these terms exactly as written: \(style.glossary.joined(separator: ", ")).")
         }
         var text = """
-        You translate chat messages written on Discord from \(from) into \(to).
+        You translate chat messages from \(from) into \(to).
 
         Style: \(style.tone.guidance)
 

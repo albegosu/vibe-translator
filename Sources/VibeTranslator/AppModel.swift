@@ -23,6 +23,8 @@ enum AppError: LocalizedError {
     case restoreMismatch
     case selectPromptInTerminal
     case promptTooLong
+    case draftInTerminal
+    case draftTooLong
 
     var errorDescription: String? {
         switch self {
@@ -31,7 +33,7 @@ enum AppError: LocalizedError {
         case .noFrontmostApp:
             "No hay ninguna app activa."
         case let .appNotAllowed(name):
-            "VibeTranslator solo actúa en Discord y la app activa es \(name). Puedes cambiarlo en Ajustes."
+            "Has limitado la traducción del borrador a otras apps y \(name) no está en la lista. Puedes cambiarlo en Ajustes › General."
         case .emptyDraft:
             "El borrador está vacío o no tiene texto que traducir."
         case .nothingChanged:
@@ -44,6 +46,10 @@ enum AppError: LocalizedError {
             "En la terminal, selecciona primero el texto del prompt."
         case .promptTooLong:
             "El campo es demasiado largo para ser un prompt. Selecciona la parte que quieres mejorar."
+        case .draftInTerminal:
+            "En la terminal no se traduce el borrador entero. Selecciona el texto y usa «Traducir selección» o «Mejorar prompt»."
+        case .draftTooLong:
+            "El texto es demasiado largo para un borrador (más de 4.000 caracteres). Selecciona la parte que quieres y usa «Traducir selección»."
         }
     }
 }
@@ -138,6 +144,8 @@ final class AppModel {
             let captured = try await target.capture()
             snapshot = captured
             guard DraftText.hasLetters(captured.text) else { throw AppError.emptyDraft }
+            // ⌘A in a code editor selects the whole file: that's not a draft.
+            guard captured.text.count <= 4_000 else { throw AppError.draftTooLong }
 
             hud.show("Traduciendo…", style: .progress)
             let translator = makeTranslator()
@@ -221,7 +229,7 @@ final class AppModel {
 
         do {
             // Reading a selection is harmless (⌘C, clipboard restored), so it works in any app.
-            let target = try prepareAccessor(restrictToAllowedApps: false)
+            let target = try prepareAccessor(forDraft: false)
             await KeyboardSimulator.waitForModifierRelease()
             let selection = try await target.captureSelection()
 
@@ -285,12 +293,6 @@ final class AppModel {
         }
     }
 
-    /// Terminals: ⌘A would grab the whole scrollback and the input line can't be replaced.
-    private static let terminalBundleIDs: Set<String> = [
-        "com.apple.Terminal", "com.googlecode.iterm2", "dev.warp.Warp-Stable", "com.mitchellh.ghostty",
-        "net.kovidgoyal.kitty", "io.alacritty", "com.github.wez.wezterm",
-    ]
-
     func improvePrompt() async {
         guard !isBusy else {
             hud.show("Ya hay una traducción en curso.", style: .info)
@@ -300,9 +302,9 @@ final class AppModel {
         defer { isBusy = false }
 
         do {
-            let target = try prepareAccessor(restrictToAllowedApps: false)
+            let target = try prepareAccessor(forDraft: false)
             await KeyboardSimulator.waitForModifierRelease()
-            let isTerminal = Self.terminalBundleIDs.contains(target.app.bundleIdentifier ?? "")
+            let isTerminal = AppScope.isTerminal(target.app.bundleIdentifier)
             let source = try await capturePrompt(in: target, isTerminal: isTerminal)
 
             let options = PromptOptions(profile: settings.promptProfile, toEnglish: settings.promptToEnglish, glossary: settings.style.glossary)
@@ -494,7 +496,9 @@ final class AppModel {
         hotKeyProblem = failed.isEmpty ? nil : "No se pudo registrar el atajo de \(failed.joined(separator: " y ")); probablemente lo usa otra app."
     }
 
-    private func prepareAccessor(restrictToAllowedApps: Bool = true) throws -> DraftAccessor {
+    /// `forDraft`: whole-draft actions (translate, restore), which only run where the app
+    /// scope allows and never in terminals. Selection and prompt actions work anywhere.
+    private func prepareAccessor(forDraft: Bool = true) throws -> DraftAccessor {
         refreshTrust()
         guard isTrusted else {
             Accessibility.requestTrust()
@@ -502,8 +506,11 @@ final class AppModel {
             throw AppError.accessibilityDenied
         }
         guard let app = NSWorkspace.shared.frontmostApplication else { throw AppError.noFrontmostApp }
-        guard !restrictToAllowedApps || settings.isAllowed(bundleID: app.bundleIdentifier) else {
-            throw AppError.appNotAllowed(app.localizedName ?? "otra")
+        if forDraft {
+            guard !AppScope.isTerminal(app.bundleIdentifier) else { throw AppError.draftInTerminal }
+            guard settings.appScope.allows(app.bundleIdentifier) else {
+                throw AppError.appNotAllowed(app.localizedName ?? "esta app")
+            }
         }
         return DraftAccessor(app: app, mode: settings.accessMode)
     }
