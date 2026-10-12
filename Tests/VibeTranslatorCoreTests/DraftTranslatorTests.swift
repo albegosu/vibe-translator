@@ -74,6 +74,12 @@ struct DraftTranslatorTests {
         #expect(result.text == "> CITA\n- PUNTO UNO\n1. PASO\n# TÍTULO\n-# NOTA")
     }
 
+    @Test func keepsCheckboxMarkers() async throws {
+        let draft = "- [ ] Open item\n- [x] Done item\n  - [X] Nested\n- [See notes] later"
+        let result = try await translate(draft)
+        #expect(result.text == "- [ ] OPEN ITEM\n- [x] DONE ITEM\n  - [X] NESTED\n- [SEE NOTES] LATER")
+    }
+
     @Test func keepsFormattingMarkers() async throws {
         let result = try await translate("Esto es **muy** importante y ||secreto||")
         #expect(result.text == "ESTO ES **MUY** IMPORTANTE Y ||SECRETO||")
