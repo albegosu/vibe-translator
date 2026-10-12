@@ -12,7 +12,8 @@ public enum DraftMarkup {
     static let codeFence = regex("```[\\s\\S]*?(?:```|\\z)")
 
     /// Block-level line prefixes: quotes, headings, subtext, bullet and numbered lists.
-    static let blockPrefix = regex(#"^[ \t]*(?:(?:>>>|>|#{1,3}|-#|[-*+]|\d{1,3}[.)])[ \t]+)*"#)
+    /// A task marker (`- [ ]`, `- [x]`) stays in the prefix so the engine cannot translate it.
+    static let blockPrefix = regex(#"^[ \t]*(?:(?:>>>|>|#{1,3}|-#|[-*+](?:[ \t]+\[[ xX]\])?|\d{1,3}[.)])[ \t]+)*"#)
 
     static let trailingWhitespace = regex(#"[ \t\r]*\z"#)
 

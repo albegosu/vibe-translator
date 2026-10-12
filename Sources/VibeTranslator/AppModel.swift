@@ -246,13 +246,15 @@ final class AppModel {
             await KeyboardSimulator.waitForModifierRelease()
             let selection = try await target.captureSelection()
 
-            let direction = LanguageDirection.detect(selection.text, native: settings.nativeLanguage, target: settings.targetLanguage)
+            // `source` keeps headings, lists and code for a web selection. `text` stays the
+            // raw selection, which is what replace compares against.
+            let direction = LanguageDirection.detect(selection.source, native: settings.nativeLanguage, target: settings.targetLanguage)
             selectionPanel.state.onClose = { [weak self] in self?.selectionPanel.close() }
             selectionPanel.onDismiss = { [app = target.app] in app.activate() }
             selectionPanel.show(directionLabel: "\(Self.languageLabel(direction.source)) → \(Self.languageLabel(direction.target))")
 
             let translator = makeTranslator(from: direction.source, to: direction.target)
-            let source = selection.text
+            let source = selection.source
             let translation = try await withTimeout(.seconds(45)) { try await translator.translate(source) }
             showSelectionResult(translation, for: selection, in: target)
         } catch {
@@ -300,7 +302,7 @@ final class AppModel {
 
         var text: String {
             switch self {
-            case let .selection(selection): selection.text
+            case let .selection(selection): selection.source
             case let .field(field): field.text
             }
         }

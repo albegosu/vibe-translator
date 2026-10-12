@@ -96,6 +96,18 @@ extension AXUIElement {
         if let role, editableRoles.contains(role) { return true }
         return attribute("AXEditableAncestor") != nil && isSettable(kAXSelectedTextRangeAttribute)
     }
+
+    /// True when this element is a web area or sits inside one. A few hops are enough:
+    /// the web area is close to the selected node, and each hop can block on a busy app.
+    var isInsideWebArea: Bool {
+        var current: AXUIElement? = self
+        for _ in 0..<8 {
+            guard let node = current else { return false }
+            if node.role == "AXWebArea" { return true }
+            current = node.element(kAXParentAttribute)
+        }
+        return false
+    }
 }
 
 extension AXError {
