@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-10-12
+
+### Fixed
+
+- Translating a selection on a web page keeps its headings, paragraphs, lists and inline code instead of flattening them into one paragraph ([#9](https://github.com/albegosu/vibe-translator/pull/9), thanks [@4pablospena](https://github.com/4pablospena)).
+
 ## [0.5.0] - 2026-10-06
 
 ### Added
@@ -83,7 +89,8 @@ First public release.
 - Configurable shortcuts, settings window, HUD notifications and an app icon.
 - Technical validation diagnostics for the focused field.
 
-[Unreleased]: https://github.com/albegosu/vibe-translator/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/albegosu/vibe-translator/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/albegosu/vibe-translator/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/albegosu/vibe-translator/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/albegosu/vibe-translator/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/albegosu/vibe-translator/compare/v0.2.0...v0.3.0
